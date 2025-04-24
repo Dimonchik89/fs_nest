@@ -7,7 +7,9 @@ import {
 	PrimaryKey,
 	Table,
 } from 'sequelize-typescript';
-import { File } from '../files/file.model';
+import { File } from './file.entity';
+import { Role } from '../auth/enums/role.enum';
+import { DataTypes } from 'sequelize';
 
 @Table
 export class User extends Model {
@@ -26,6 +28,16 @@ export class User extends Model {
 	@Column
 	passwordHash: string;
 
+	@Column({
+		type: DataTypes.ENUM(...Object.values(Role)),
+		allowNull: false,
+		defaultValue: Role.USER,
+	})
+	role: Role.USER;
+
+	@Column({ allowNull: true })
+	hashedRefreshToken: string;
+
 	@AllowNull(false)
 	@Column
 	subscription: string;
@@ -37,9 +49,14 @@ export class User extends Model {
 	@Column
 	folderPath: string;
 
+	@AllowNull(true)
 	@Column
 	stripeCustomerId: string;
 
+	@Column
+	subscriptionId: string;
+
+	// @HasMany(() => File, { onDelete: 'CASCADE' })
 	@HasMany(() => File)
 	userFiles: File[];
 }

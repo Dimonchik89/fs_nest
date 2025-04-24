@@ -5,11 +5,11 @@ import {
 	Get,
 	Headers,
 	HttpCode,
-	MaxFileSizeValidator,
 	Param,
 	ParseFilePipe,
 	Post,
 	Query,
+	Req,
 	Res,
 	UploadedFile,
 	UseGuards,
@@ -27,7 +27,6 @@ import {
 	ApiTags,
 } from '@nestjs/swagger';
 import {
-	FILE_NOT_FOUND,
 	FILE_NOT_FOUND_EXAMPLE,
 	FILE_IS_REQUIRED_EXAMPLE,
 	FILE_SUCCESSFULLY_DELETED_EXAMPLE,
@@ -63,10 +62,10 @@ export class FilesController {
 			FILE_VALIDATION_FAILED: FILE_VALIDATION_FAILED_EXAMPLE,
 		},
 	})
+	@UseGuards(JwtAuthGuard)
 	@ApiBearerAuth('access_token')
 	@HttpCode(201)
 	@Post('upload')
-	@UseGuards(JwtAuthGuard)
 	@UseInterceptors(FileInterceptor('file'))
 	uploadFile(
 		@UploadedFile(
@@ -79,6 +78,7 @@ export class FilesController {
 		)
 		file: Express.Multer.File,
 		@Headers('Authorization') bearerToken: string,
+		@Req() req: any,
 	) {
 		return this.filesService.uploadFile(file, bearerToken);
 	}
@@ -100,11 +100,13 @@ export class FilesController {
 		example: UNAUTHORIZED_EXAMPLE,
 	})
 	@ApiBearerAuth('access_token')
-	@Delete('delete/:id')
 	@HttpCode(200)
 	@UseGuards(JwtAuthGuard)
-	deleteFile(@Param('id') id: string) {
-		return this.filesService.deleteFile(id);
+	@Delete('delete/:id')
+	deleteFile(@Param('id') id: string, @Req() req) {
+		console.log(req.user);
+
+		return this.filesService.deleteFile(id, req.user.email);
 	}
 
 	@ApiOperation({ summary: 'Get all user files' })
@@ -145,6 +147,7 @@ export class FilesController {
 		description: BAD_REQUEST,
 		example: FILE_NOT_FOUND_EXAMPLE,
 	})
+	@ApiBearerAuth('access_token')
 	@UseGuards(JwtAuthGuard)
 	@Get('download/:id')
 	async downloadFile(@Param('id') id: string, @Res() res) {

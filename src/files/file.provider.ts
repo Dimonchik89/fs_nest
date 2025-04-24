@@ -1,4 +1,4 @@
-import { File } from './file.model';
+import { File } from '../entities/file.entity';
 
 export const fileProviders = [
 	{

@@ -8,7 +8,7 @@ import {
 	PrimaryKey,
 	Table,
 } from 'sequelize-typescript';
-import { User } from '../user/user.model';
+import { User } from './user.entity';
 
 @Table
 export class File extends Model {

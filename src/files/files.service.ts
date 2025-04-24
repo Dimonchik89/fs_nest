@@ -3,10 +3,11 @@ import { ensureDir, writeFile, pathExists, remove } from 'fs-extra';
 import { path } from 'app-root-path';
 import { format } from 'date-fns';
 import { JwtService } from '@nestjs/jwt';
-import { File } from './file.model';
 import { FILE_NOT_FOUND } from './files.constants';
 import { DeleteFileResponse } from './file.types';
-import { createReadStream, readFileSync } from 'fs';
+import { readFileSync, readdirSync, statSync } from 'fs';
+import { join } from 'path';
+import { File } from '../entities/file.entity';
 
 @Injectable()
 export class FilesService {
@@ -32,8 +33,27 @@ export class FilesService {
 
 		const access_token = bearerToken.split(' ')[1];
 
-		const { id, email } = await this.jwtService.decode(access_token);
+		const { id, email, maxFolderSize } =
+			await this.jwtService.decode(access_token); // убрать получение maxFolderSize и получать его из базы данных
 		const uploadFolder = `${path}/uploads/${email}`;
+
+		// ------------------------------------ проверка размера папки
+
+		let totalSize = 0;
+		const files = readdirSync(uploadFolder);
+
+		files.forEach((file) => {
+			const filePath = join(uploadFolder, file);
+			const stats = statSync(filePath);
+			totalSize += stats.size;
+		});
+
+		if (totalSize + file.size > maxFolderSize * 1024 * 1024) {
+			throw new BadRequestException(
+				'Total size of file upload folder exceeded',
+			);
+		}
+		// ------------------------------------
 
 		const hasOldFileWithThisName = await this.fileRepository.findOne({
 			where: { filePath: `${uploadFolder}/${newFileName}` },
@@ -57,26 +77,24 @@ export class FilesService {
 		return createdFile;
 	}
 
-	async deleteFile(id: string): Promise<DeleteFileResponse> {
+	async deleteFile(id: string, email: string): Promise<DeleteFileResponse> {
 		const file = await this.fileRepository.findOne({ where: { id } });
 		if (!file) {
 			throw new BadRequestException(FILE_NOT_FOUND);
 		}
 
-		const res = await pathExists(file.filePath);
+		const deletedFileName = file.filePath.split('/').pop();
+		const folderPath = join(`${path}/uploads/${email}`, deletedFileName);
+		const res = await pathExists(folderPath);
 		if (!res) {
 			throw new BadRequestException(FILE_NOT_FOUND);
 		}
-		await remove(file.filePath);
+		await remove(folderPath);
 		await this.fileRepository.destroy({ where: { id } });
-
-		const fileName = file.filePath
-			.split('/')
-			.find((item, index, arr) => index === arr.length - 1);
 
 		return {
 			statusCode: 200,
-			message: `${fileName} file was deleted`,
+			message: `${deletedFileName} file was deleted`,
 		};
 	}
 

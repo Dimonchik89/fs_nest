@@ -1,20 +1,28 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { FilesModule } from './files/files.module';
 import { JwtModule } from '@nestjs/jwt';
-import { jwtConstants } from './auth/auth.constants';
+import { StripeModule } from './stripe/stripe.module';
+import { DatabaseModule } from './database/database.module';
+import jwtConfig from './auth/config/jwt.config';
 
 @Module({
 	imports: [
-		JwtModule.register({
-			global: true,
-			secret: jwtConstants.secret,
-			signOptions: { expiresIn: '24h' },
+		// JwtModule.register({
+		// 	global: true,
+		// 	secret: process.env.JWT_SECRET,
+		// 	signOptions: { expiresIn: process.env.JWT_EXPIRE_IN },
+		// }),
+		// JwtModule.registerAsync(jwtConfig.asProvider()),
+		// JwtModule.registerAsync(jwtConfig.asProvider()),
+		ConfigModule.forRoot({
+			isGlobal: true,
 		}),
-		ConfigModule.forRoot(),
 		AuthModule,
 		FilesModule,
+		StripeModule,
+		DatabaseModule, // убрал подключение с auth.module и перенес сяда
 	],
 })
 export class AppModule {}

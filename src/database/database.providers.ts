@@ -1,6 +1,6 @@
 import { Sequelize } from 'sequelize-typescript';
-import { User } from '../user/user.model';
-import { File } from '../files/file.model';
+import { User } from '../entities/user.entity';
+import { File } from '../entities/file.entity';
 
 export const databaseProviders = [
 	{
@@ -9,12 +9,13 @@ export const databaseProviders = [
 			const sequelize = new Sequelize({
 				dialect: 'postgres',
 				host: 'localhost',
-				port: 5430,
-				username: 'admin',
-				password: '123456',
-				database: 'fl_studio_data',
+				port: Number(process.env.POSTGRES_PORT),
+				username: process.env.POSTGRES_USER,
+				password: process.env.POSTGRES_PASSWORD,
+				database: process.env.POSTGRES_DB,
 			});
 			sequelize.addModels([User, File]);
+			// sequelize.addModels([__dirname + '../**/*.entity{.ts,.js}']); work with typeorm
 			await sequelize.sync();
 			return sequelize;
 		},

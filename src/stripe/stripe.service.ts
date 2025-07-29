@@ -65,19 +65,16 @@ export class StripeService {
 		return { url: session.url };
 	}
 
-	async success(
-		session_id: string,
-		bearerToken: string,
-	): Promise<UserAccessToken> {
-		const token = bearerToken.split(' ').pop();
-		const tailUser = await this.jwtService.decode(token);
+	async success(session_id: string, userId: string): Promise<UserAccessToken> {
+		// const token = bearerToken.split(' ').pop();
+		// const tailUser = await this.jwtService.decode(token);
 
-		if (!tailUser) {
+		if (!userId) {
 			throw new UnauthorizedException(INVALID_TOKEN_ERROR);
 		}
 
 		const user = await this.userRepository.findOne({
-			where: { id: tailUser.id },
+			where: { id: userId },
 		});
 
 		if (user.subscriptionId) {
@@ -112,16 +109,13 @@ export class StripeService {
 
 	async customerInfo(
 		customerId: string,
-		bearerToken: string,
+		userId: string,
 	): Promise<ResponseWithURL> {
-		const token = bearerToken.split(' ').pop();
-		const decodeUser = await this.jwtService.decode(token);
-
-		if (!decodeUser) {
+		if (!userId) {
 			throw new UnauthorizedException(UNAUTHORIZED_ERROR);
 		}
 		const user = await this.userRepository.findOne({
-			where: { id: decodeUser.id },
+			where: { id: userId },
 		});
 
 		if (user.stripeCustomerId !== customerId) {

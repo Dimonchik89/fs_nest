@@ -16,6 +16,8 @@ import { JwtAuthGuard } from './guards/jwt.guard';
 import { RolesGuard } from './guards/roles.guard';
 import googleOathConfig from './config/google-oath.config';
 import { GoogleStrategy } from './strategies/google.strategy';
+import clientConfig from './config/client.config';
+
 @Module({
 	controllers: [AuthController],
 	imports: [
@@ -24,6 +26,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
 		ConfigModule.forFeature(jwtConfig),
 		ConfigModule.forFeature(refreshJwtConfig),
 		ConfigModule.forFeature(googleOathConfig),
+		ConfigModule.forFeature(clientConfig),
 		PassportModule,
 		FilesModule,
 	],

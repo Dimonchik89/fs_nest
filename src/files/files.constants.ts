@@ -35,9 +35,12 @@ export const FILE_VALIDATION_FAILED_EXAMPLE = {
 };
 
 export const FILE_NOT_FOUND_EXAMPLE = {
-	message: FILE_NOT_FOUND,
-	error: BAD_REQUEST,
-	statusCode: 400,
+	summary: FILE_NOT_FOUND,
+	value: {
+		message: FILE_NOT_FOUND,
+		error: BAD_REQUEST,
+		statusCode: 400,
+	},
 };
 export const FILE_SUCCESSFULLY_DELETED_EXAMPLE = {
 	statusCode: 200,

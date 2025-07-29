@@ -35,7 +35,7 @@ import {
 } from './stripe.constants';
 import {
 	UNAUTHORIZED_ERROR,
-	USER_ACCESS_TOKEN_EXAMPLE,
+	USER_ACCESS_TOKEN_AND_REFRESH_TOKEN_EXAMPLE,
 } from '../auth/auth.constants';
 
 @Controller('stripe')
@@ -89,9 +89,9 @@ export class StripeController {
 		description: 'Request body not added',
 		example: INTERVAL_SERVER_ERROR,
 	})
-	@ApiBearerAuth('access_token')
 	@HttpCode(200)
 	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth('access_token')
 	@Post('checkout')
 	async checkout(@Body() dto: CheckoutDto) {
 		return await this.stripeService.checkout(dto.price);
@@ -104,7 +104,7 @@ export class StripeController {
 	@ApiResponse({
 		status: 200,
 		description: 'User data updated',
-		example: USER_ACCESS_TOKEN_EXAMPLE,
+		example: USER_ACCESS_TOKEN_AND_REFRESH_TOKEN_EXAMPLE,
 	})
 	@ApiResponse({
 		status: 404,
@@ -119,11 +119,8 @@ export class StripeController {
 	@UseGuards(JwtAuthGuard)
 	@ApiBearerAuth('access_token')
 	@Get('success')
-	async success(
-		@Query() query: SessionIdQueryParam,
-		@Headers('Authorization') bearerToken: string,
-	) {
-		return this.stripeService.success(query.session_id, bearerToken);
+	async success(@Query() query: SessionIdQueryParam, @Req() req) {
+		return this.stripeService.success(query.session_id, req.user.id);
 	}
 
 	@ApiOperation({
@@ -133,7 +130,7 @@ export class StripeController {
 	@ApiResponse({
 		status: 200,
 		description: 'Success',
-		example: USER_ACCESS_TOKEN_EXAMPLE,
+		example: USER_ACCESS_TOKEN_AND_REFRESH_TOKEN_EXAMPLE,
 	})
 	@ApiResponse({
 		status: 400,
@@ -145,14 +142,11 @@ export class StripeController {
 		description: 'Not Found',
 		example: NO_SUCH_FILE_OR_DIRECTORY,
 	})
-	@ApiBearerAuth('access_token')
 	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth('access_token')
 	@Get('customer/:customerId')
-	async customerInfo(
-		@Param('customerId') customerId: string,
-		@Headers('Authorization') bearerToken: string,
-	) {
-		return this.stripeService.customerInfo(customerId, bearerToken);
+	async customerInfo(@Param('customerId') customerId: string, @Req() req) {
+		return this.stripeService.customerInfo(customerId, req.user.id);
 	}
 
 	@Post('webhook')
@@ -166,5 +160,3 @@ export class StripeController {
 		return this.stripeService.webhook(payload, sig);
 	}
 }
-
-// cs_test_a1F5GFpLTPnbBn5NWKoB8mZ4rasgsrlWJDHcv70Gx5yfCQfFRZy9TbdHdU

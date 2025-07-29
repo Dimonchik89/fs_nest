@@ -34,6 +34,17 @@ async function bootstrap() {
 			},
 			'access_token',
 		)
+		.addBearerAuth(
+			{
+				description: `Refresh token: Bearer <JWT>`,
+				name: 'Authorization',
+				bearerFormat: 'Bearer',
+				scheme: 'Bearer',
+				type: 'http',
+				in: 'Header',
+			},
+			'refresh_token',
+		)
 		.build();
 
 	const document = SwaggerModule.createDocument(app, options);
@@ -42,3 +53,9 @@ async function bootstrap() {
 	await app.listen(process.env.PORT ?? 3001);
 }
 bootstrap();
+
+// stripe listen --forward-to localhost:3000/stripe/webhook
+
+
+
+// проверь пожалуйста сервис validateRefreshToken  у меня почемуто ошибка при проверке токена который приходит от клиента и захешированного токена который мы получаем с сервера. когда происходит метод argon2.verify то он всегда возвращает false, тоесть токени не совпадают. но вроде все написано нормально и должно быть нормально. проверь все ли там правильно и в логике работы этого сервиса. и напиш все ли правльно. только не исправляй код а напиши в чат что нужно исправить. ответь на руском

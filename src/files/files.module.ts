@@ -6,6 +6,7 @@ import { path } from 'app-root-path';
 import { fileProviders } from './file.provider';
 import { JwtModule } from '@nestjs/jwt';
 import jwtConfig from '../auth/config/jwt.config';
+import { userProviders } from '../user/user.providers';
 
 @Module({
 	imports: [
@@ -15,7 +16,7 @@ import jwtConfig from '../auth/config/jwt.config';
 		JwtModule.registerAsync(jwtConfig.asProvider()),
 	],
 	controllers: [FilesController],
-	providers: [FilesService, ...fileProviders],
+	providers: [FilesService, ...fileProviders, ...userProviders],
 	exports: [FilesService],
 })
 export class FilesModule {}

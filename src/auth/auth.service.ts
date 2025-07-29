@@ -30,7 +30,9 @@ export class AuthService {
 		private refreshTokenConfig: ConfigType<typeof refreshJwtConfig>,
 	) {}
 
-	async updateHashedRefreshToken(userId: string, hashedRefreshToken: string) {
+	async updateHashedRefreshToken(userId: string, refreshToken: string) {
+		const hashedRefreshToken = await argon2.hash(refreshToken);
+
 		return await this.userRepository.update(
 			{ hashedRefreshToken },
 			{ where: { id: userId } },
@@ -41,10 +43,9 @@ export class AuthService {
 		return this.userRepository.findOne<User>({ where: { email: login } });
 	}
 
-	async createUser(dto: RegisterDto): Promise<UserAccessTokenAndRefreshToken> {
+	async createUser(dto: RegisterDto): Promise<TailUserForToken> {
 		const salt = await genSalt(10);
 		const folderPath = await this.filesService.createFolder(dto.login);
-
 		const newUser = await this.userRepository.create({
 			email: dto.login,
 			passwordHash: await hash(dto.password, salt),
@@ -61,27 +62,16 @@ export class AuthService {
 			stripeCustomerId: newUser.stripeCustomerId,
 			role: newUser.role,
 		};
-
-		const { accessToken, refreshToken } = await this.generateTokens(tailUser);
-		const hashedRefreshToken = await argon2.hash(refreshToken);
-
-		await this.updateHashedRefreshToken(newUser.id, hashedRefreshToken);
-
-		return {
-			access_token: accessToken,
-			refresh_token: refreshToken,
-		};
+		return tailUser;
 	}
 
 	async validateUser(dto: AuthDto): Promise<TailUserForToken> {
 		const user = await this.findUser(dto.login);
-
 		if (!user) {
 			throw new UnauthorizedException(USER_EMAIL_NOT_FOUND_ERROR);
 		}
 
 		const isCorrectPassword = await compare(dto.password, user.passwordHash);
-
 		if (!isCorrectPassword) {
 			throw new UnauthorizedException(WRONG_PASSWORD_ERROR);
 		}
@@ -97,9 +87,7 @@ export class AuthService {
 
 	async login(user: TailUserForToken): Promise<UserAccessTokenAndRefreshToken> {
 		const { accessToken, refreshToken } = await this.generateTokens(user);
-		const hashedRefreshToken = await argon2.hash(refreshToken);
-
-		await this.updateHashedRefreshToken(user.id, hashedRefreshToken);
+		await this.updateHashedRefreshToken(user.id, refreshToken);
 
 		return {
 			access_token: accessToken,
@@ -124,23 +112,22 @@ export class AuthService {
 	}
 
 	// -------------------------------- Посмотреть на необходимость наличия этой функции, возможно оставить refresh
-	async isAuth(bearerToken: string) {
-		const token = bearerToken.split(' ').pop();
+	// async isAuth(bearerToken: string) {
+	// 	const token = bearerToken.split(' ').pop();
+	// 	const user = await this.jwtService.decode(token);
 
-		const user = await this.jwtService.decode(token);
-
-		if (!user) {
-			throw new UnauthorizedException(INVALID_TOKEN_ERROR);
-		}
-		return {
-			access_token: await this.jwtService.signAsync({
-				id: user.id,
-				email: user.email,
-				subscription: user.subscription,
-				stripeCustomerId: user.stripeCustomerId,
-			}),
-		};
-	}
+	// 	if (!user) {
+	// 		throw new UnauthorizedException(INVALID_TOKEN_ERROR);
+	// 	}
+	// 	return {
+	// 		access_token: await this.jwtService.signAsync({
+	// 			id: user.id,
+	// 			email: user.email,
+	// 			subscription: user.subscription,
+	// 			stripeCustomerId: user.stripeCustomerId,
+	// 		}),
+	// 	};
+	// }
 
 	// -------------------------------- Посмотреть на необходимость наличия этой функции
 	async getProfile(userId: string) {
@@ -157,7 +144,7 @@ export class AuthService {
 	}
 
 	// -------------------------------- Посмотреть на необходимость наличия этой функции
-	async refreshToken(userId: string) {
+	async refreshToken(userId: string) {		
 		const { id, email, subscription, stripeCustomerId, role } =
 			await this.userRepository.findOne({
 				where: { id: userId },
@@ -170,9 +157,15 @@ export class AuthService {
 			stripeCustomerId,
 			role,
 		});
-		const hashedRefreshToken = await argon2.hash(refreshToken);
+		
+		// const hashedRefreshToken = await argon2.hash(refreshToken);
+		// await this.updateHashedRefreshToken(id, hashedRefreshToken);
+		await this.updateHashedRefreshToken(id, refreshToken);
 
-		await this.updateHashedRefreshToken(id, hashedRefreshToken);
+		// console.log('refreshToken!!!', {
+		// 	hashedRefreshToken: hashedRefreshToken,
+		// 	refresh_token: refreshToken,
+		// });
 
 		return {
 			access_token: accessToken,
@@ -186,10 +179,13 @@ export class AuthService {
 	): Promise<{ id: string; email: string }> {
 		const user = await this.userRepository.findOne({ where: { id: userId } });
 
-		if (!user || !user.hashedRefreshToken) {
+		
+		
+
+		if (!user || !user.hashedRefreshToken) {			
 			throw new UnauthorizedException(INVALID_TOKEN_ERROR);
 		}
-
+		
 		const refreshTokenMatches = await argon2.verify(
 			user.hashedRefreshToken,
 			refreshToken,
@@ -206,7 +202,11 @@ export class AuthService {
 	}
 
 	async signOut(userId: string) {
-		await this.updateHashedRefreshToken(userId, null);
+		// await this.updateHashedRefreshToken(userId, null);
+		await this.userRepository.update(
+			{ hashedRefreshToken: null },
+			{ where: { id: userId } },
+		);
 	}
 
 	async validateGoogleUser(googleUser: RegisterDto) {
@@ -216,28 +216,11 @@ export class AuthService {
 
 		if (user) return user;
 
-		// ------------------- Переделать функиию create чтоб она возвращала пользователя а в контроллере из тех данных делать токины и отправлять на клиент. и тогда можно будет ниже вместо кода вызывать функцию authService.cerate() и не дублировать код
-
-		const salt = await genSalt(10);
-		const folderPath = await this.filesService.createFolder(googleUser.login);
-
-		const createdUser = await this.userRepository.create({
-			email: googleUser.login,
-			passwordHash: await hash(googleUser.password, salt),
-			subscription: 'free',
-			maxFolderSize: 50,
-			folderPath,
-			role: Role.USER,
+		const newUser = await this.createUser({
+			login: googleUser.login,
+			password: googleUser.password,
 		});
-		const { accessToken, refreshToken } = await this.generateTokens({
-			id: createdUser.id,
-			email: createdUser.email,
-			role: createdUser.role,
-			stripeCustomerId: createdUser.stripeCustomerId,
-			subscription: createdUser.subscriptionId,
-		});
-		const hashedRefreshToken = await argon2.hash(refreshToken);
-		await this.updateHashedRefreshToken(createdUser.id, hashedRefreshToken);
-		return createdUser;
+
+		return newUser;
 	}
 }

@@ -59,7 +59,16 @@ export const INVALID_TOKEN_EXAMPLE = {
 };
 
 // userAccessTokenResponse
-export const USER_ACCESS_TOKEN_EXAMPLE = {
+export const USER_ACCESS_TOKEN_AND_REFRESH_TOKEN_EXAMPLE = {
 	access_token:
 		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+	refresh_token:
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjNkZmI4ZjA4LWQ1Y2EtNDc3Yy05M2I2LTE4N2U3OTZiOTI5NSIsImVtYWlsIjoidG90b3RvQGdtYWlsLmNvbSIsInN1YnNjcmlwdGlvbiI6ImZyZWUiLCJzdHJpcGVDdXN0b21lcklkIjpudWxsLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc0NTU1ODg1OSwiZXhwIjoxNzQ2MTYzNjU5fQ.vBfGp9eFCBpfDqY3TkiDA8Vc4MF2OvI9bDk_456d91Q',
+};
+
+export const USER_PROFILE_EXAMPLE = {
+	id: '3dfb8f08-d5ca-472c-93b6-187e796b9225',
+	email: 'test@gmail.com',
+	subscription: 'free',
+	stripeCustomerId: null,
 };

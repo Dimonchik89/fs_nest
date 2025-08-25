@@ -35,7 +35,7 @@ export class User extends Model {
 		allowNull: false,
 		defaultValue: Role.USER,
 	})
-	role: Role.USER;
+	role: Role;
 
 	@Column({ allowNull: true })
 	hashedRefreshToken: string;

@@ -129,7 +129,7 @@ export class AuthService {
 
 	// -------------------------------- Посмотреть на необходимость наличия этой функции
 	async getProfile(userId: string) {
-		const { id, email, subscription, stripeCustomerId } =
+		const { id, email, subscription, stripeCustomerId, role } =
 			await this.userRepository.findOne({
 				where: { id: userId },
 			});
@@ -138,6 +138,7 @@ export class AuthService {
 			email,
 			subscription,
 			stripeCustomerId,
+			role,
 		};
 	}
 

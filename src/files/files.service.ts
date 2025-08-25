@@ -31,6 +31,59 @@ export class FilesService {
 		return folderPath;
 	}
 
+	async uploadArrayFiles({ files, reqUser }: { files: Array<Express.Multer.File>, reqUser: { id: string; email: string } }) {
+		const { id, email } = reqUser;
+		const createdFiles: File[] = [];
+
+		const uploadFolder = join(path, UPLOADS_BASE_PATH, email);
+		await fsExtra.ensureDir(uploadFolder);
+		
+
+		for (const file of files) {
+			const { originalname, buffer, size } = file;
+			
+			const lastDotIndex = originalname.lastIndexOf('.');
+			const fileExtPart = lastDotIndex !== -1 ? originalname.substring(lastDotIndex + 1) : '';
+
+			const uniqueServerFileName = `${uuidv4()}.${fileExtPart}`
+			const fullFilePath = join(uploadFolder, uniqueServerFileName);
+
+			const existingFileByOriginalName = await this.fileRepository.findOne({
+				where: {
+					userId: id,
+					originalName: originalname,
+				},
+			});
+
+			if (existingFileByOriginalName) {
+				try {
+					await fsPromises.unlink(existingFileByOriginalName.filePath);
+				} catch (unlinkError: any) {
+					if (unlinkError.code !== 'ENOENT') {
+						console.warn(`Could not delete old file ${fullFilePath}:`, unlinkError);
+					}
+				}
+				await this.fileRepository.destroy({
+					where: { id: existingFileByOriginalName.id },
+				});
+			}
+
+			await fsPromises.writeFile(fullFilePath, buffer);
+
+			const createdFile = await this.fileRepository.create({
+				filePath: fullFilePath,
+				userId: id,
+				fileExt: fileExtPart,
+				fileName: uniqueServerFileName,
+				originalName: originalname,
+				size: size,
+			});
+			createdFiles.push(createdFile);
+		}
+
+		return createdFiles;
+	}
+
     async uploadFiles(
         files: Array<Express.Multer.File>,
         reqUser: { id: string; email: string, role: Role },
@@ -47,6 +100,11 @@ export class FilesService {
             throw new UnauthorizedException('User not found.');
         }
 
+		// --------------------------------------------------------------------------------
+		if(user.role === Role.ADMIN) {
+			return this.uploadArrayFiles({ files, reqUser });
+		}
+		// --------------------------------------------------------------------------------		
 
         const maxFolderSizeMb = user.maxFolderSize;
         const maxFolderSizeBytes = maxFolderSizeMb * 1024 * 1024;
@@ -71,6 +129,8 @@ export class FilesService {
         }
 
         const incomingFilesTotalSize = files.reduce((sum, file) => sum + file.size, 0);
+		console.log("currentTotalFolderSize!!!!!!!!!!!!!!!!!!!!!!!!!!!", currentTotalFolderSize);
+		
 
         if (currentTotalFolderSize + incomingFilesTotalSize > maxFolderSizeBytes) {
             throw new BadRequestException(
@@ -78,107 +138,53 @@ export class FilesService {
             );
         }
 
-        const createdFiles: File[] = [];
+		return this.uploadArrayFiles({ files, reqUser });
+        // const createdFiles: File[] = [];
 
-        for (const file of files) {
-            const { originalname, buffer, size } = file;
+        // for (const file of files) {
+        //     const { originalname, buffer, size } = file;
             
-            const lastDotIndex = originalname.lastIndexOf('.');
-            const fileExtPart = lastDotIndex !== -1 ? originalname.substring(lastDotIndex + 1) : '';
+        //     const lastDotIndex = originalname.lastIndexOf('.');
+        //     const fileExtPart = lastDotIndex !== -1 ? originalname.substring(lastDotIndex + 1) : '';
 
-            const uniqueServerFileName = `${uuidv4()}.${fileExtPart}`
-            const fullFilePath = join(uploadFolder, uniqueServerFileName);
+        //     const uniqueServerFileName = `${uuidv4()}.${fileExtPart}`
+        //     const fullFilePath = join(uploadFolder, uniqueServerFileName);
 
-            const existingFileByOriginalName = await this.fileRepository.findOne({
-                where: {
-                    userId: id,
-                    originalName: originalname,
-                },
-            });
+        //     const existingFileByOriginalName = await this.fileRepository.findOne({
+        //         where: {
+        //             userId: id,
+        //             originalName: originalname,
+        //         },
+        //     });
 
-            if (existingFileByOriginalName) {
-                try {
-                    await fsPromises.unlink(existingFileByOriginalName.filePath);
-                } catch (unlinkError: any) {
-                    if (unlinkError.code !== 'ENOENT') {
-                        console.warn(`Could not delete old file ${fullFilePath}:`, unlinkError);
-                    }
-                }
-				await this.fileRepository.destroy({
-                    where: { id: existingFileByOriginalName.id },
-                });
-            }
+        //     if (existingFileByOriginalName) {
+        //         try {
+        //             await fsPromises.unlink(existingFileByOriginalName.filePath);
+        //         } catch (unlinkError: any) {
+        //             if (unlinkError.code !== 'ENOENT') {
+        //                 console.warn(`Could not delete old file ${fullFilePath}:`, unlinkError);
+        //             }
+        //         }
+		// 		await this.fileRepository.destroy({
+        //             where: { id: existingFileByOriginalName.id },
+        //         });
+        //     }
 
-            await fsPromises.writeFile(fullFilePath, buffer);
+        //     await fsPromises.writeFile(fullFilePath, buffer);
 
-            const createdFile = await this.fileRepository.create({
-                filePath: fullFilePath,
-                userId: id,
-                fileExt: fileExtPart,
-                fileName: uniqueServerFileName,
-                originalName: originalname,
-                size: size,
-            });
-            createdFiles.push(createdFile);
-        }
+        //     const createdFile = await this.fileRepository.create({
+        //         filePath: fullFilePath,
+        //         userId: id,
+        //         fileExt: fileExtPart,
+        //         fileName: uniqueServerFileName,
+        //         originalName: originalname,
+        //         size: size,
+        //     });
+        //     createdFiles.push(createdFile);
+        // }
 
-        return createdFiles;
+        // return createdFiles;
     }
-
-	// async uploadFile(
-	// 	file: Express.Multer.File,
-	// 	bearerToken: string,
-	// ): Promise<File> {
-	// 	const date = format(new Date(), 'dd-MM-yyyy');
-	// 	const { originalname } = file;
-	// 	const [fileName, fileExt] = originalname.split('.');
-	// 	const newFileName = `${fileName}_${date}.${fileExt}`;
-
-	// 	const access_token = bearerToken.split(' ')[1];
-
-	// 	const { id, email, maxFolderSize } =
-	// 		await this.jwtService.decode(access_token); // убрать получение maxFolderSize и получать его из базы данных
-	// 	const uploadFolder = `${path}/uploads/${email}`;
-
-	// 	// ------------------------------------ проверка размера папки
-
-	// 	let totalSize = 0;
-	// 	const files = readdirSync(uploadFolder);
-
-	// 	files.forEach((file) => {
-	// 		const filePath = join(uploadFolder, file);
-	// 		const stats = statSync(filePath);
-	// 		totalSize += stats.size;
-	// 	});
-
-	// 	if (totalSize + file.size > maxFolderSize * 1024 * 1024) {
-	// 		throw new BadRequestException(
-	// 			'Total size of file upload folder exceeded',
-	// 		);
-	// 	}
-	// 	// ------------------------------------
-
-	// 	const hasOldFileWithThisName = await this.fileRepository.findOne({
-	// 		where: { filePath: `${uploadFolder}/${newFileName}` },
-	// 	});
-
-	// 	if (hasOldFileWithThisName) {
-	// 		await this.fileRepository.destroy({
-	// 			where: { id: hasOldFileWithThisName.id },
-	// 		});
-	// 	}
-
-	// 	await ensureDir(uploadFolder);
-	// 	await writeFile(`${uploadFolder}/${newFileName}`, file.buffer);
-
-	// 	const createdFile = await this.fileRepository.create({
-	// 		filePath: `${uploadFolder}/${newFileName}`,
-	// 		userId: id,
-	// 		fileExt,
-	// 	});
-
-	// 	return createdFile;
-	// }
 
 	async deleteFile(fileId: string, userId: string): Promise<DeleteFileResponse> {
 		const file = await this.fileRepository.findOne({ where: { id: fileId, userId } });
@@ -217,18 +223,6 @@ export class FilesService {
 		return data;
 	}
 
-	// async downloadFile(id: string, userId: string) {
-	// 	const file = await this.fileRepository.findOne({ where: { id, userId } });
-
-	// 	if (!file) {
-	// 		throw new BadRequestException(FILE_NOT_FOUND);
-	// 	}
-	// 	const fileName = file.filePath.split('/').pop();
-	// 	return {
-	// 		file: readFileSync(file.filePath),
-	// 		fileName,
-	// 	};
-	// }
 	async downloadFile(id: string, userId: string): Promise<{ filePath: string; fileName: string }> {
         // const access_token = bearerToken.split(' ')[1];
         // const { id: userId } = await this.jwtService.decode(access_token);

@@ -27,17 +27,17 @@ export class File extends Model {
 	@Column
 	fileExt: string;
 
-	// @AllowNull(false)
-    // @Column
-    // fileName: string; 
+	@AllowNull(false)
+    @Column
+    fileName: string; 
 
-	// @AllowNull(false)
-    // @Column
-    // originalName: string; 
+	@AllowNull(false)
+    @Column
+    originalName: string; 
 
-	// @AllowNull(false)
-    // @Column(DataType.BIGINT)
-    // size: number;
+	@AllowNull(false)
+    @Column(DataType.BIGINT)
+    size: number;
 
 	@BelongsTo(() => User)
 	user: User;

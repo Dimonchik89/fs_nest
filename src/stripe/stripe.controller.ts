@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	Body,
 	Controller,
 	Get,
@@ -37,10 +38,16 @@ import {
 	UNAUTHORIZED_ERROR,
 	USER_ACCESS_TOKEN_AND_REFRESH_TOKEN_EXAMPLE,
 } from '../auth/auth.constants';
+import { Request } from 'express';
+import Stripe from 'stripe';
+import { JwtService } from '@nestjs/jwt';
 
 @Controller('stripe')
 export class StripeController {
-	constructor(private readonly stripeService: StripeService) {}
+	constructor(
+		private readonly stripeService: StripeService,
+		private jwtService: JwtService
+	) {}
 
 	@ApiOperation({ summary: 'Get all products' })
 	@ApiBearerAuth('access_token')
@@ -62,7 +69,7 @@ export class StripeController {
 
 	@ApiOperation({
 		summary:
-			'Request for creating a subscription. We receive the address to which we need redirect',
+			'Request for creating a subscription. We receive the address to which we need redirect. You need to add the selected subscription ID and user access_token to the header',
 	})
 	@ApiBody({
 		description:
@@ -93,8 +100,8 @@ export class StripeController {
 	@UseGuards(JwtAuthGuard)
 	@ApiBearerAuth('access_token')
 	@Post('checkout')
-	async checkout(@Body() dto: CheckoutDto) {
-		return await this.stripeService.checkout(dto.price);
+	async checkout(@Body() dto: CheckoutDto, @Req() req) {
+		return await this.stripeService.checkout(dto.price, req.user.id);
 	}
 
 	@ApiOperation({
@@ -123,9 +130,35 @@ export class StripeController {
 		return this.stripeService.success(query.session_id, req.user.id);
 	}
 
+	// @ApiOperation({
+	// 	summary:
+	// 		"Request to get the URL, so that later you can go to it and end up on a page with information about the user's subscription and the ability to unsubscribe",
+	// })
+	// @ApiResponse({
+	// 	status: 200,
+	// 	description: 'Success',
+	// 	example: USER_ACCESS_TOKEN_AND_REFRESH_TOKEN_EXAMPLE,
+	// })
+	// @ApiResponse({
+	// 	status: 400,
+	// 	description: 'Customer not found',
+	// 	example: CUSTOMER_NOT_FOUND_EXAMPLE,
+	// })
+	// @ApiResponse({
+	// 	status: 404,
+	// 	description: 'Not Found',
+	// 	example: NO_SUCH_FILE_OR_DIRECTORY,
+	// })
+	// @UseGuards(JwtAuthGuard)
+	// @ApiBearerAuth('access_token')
+	// @Get('customer/:customerId')
+	// async customerInfo(@Param('customerId') customerId: string, @Req() req) {
+	// 	return this.stripeService.customerInfo(customerId, req.user.id);
+	// }
+
 	@ApiOperation({
 		summary:
-			"Request to get the URL, so that later you can go to it and end up on a page with information about the user's subscription and the ability to unsubscribe",
+			"Request to get the URL, so that later you can go to it and end up on a page with information about the user's subscription and the ability to unsubscribe. Need to send access token in header",
 	})
 	@ApiResponse({
 		status: 200,
@@ -144,9 +177,20 @@ export class StripeController {
 	})
 	@UseGuards(JwtAuthGuard)
 	@ApiBearerAuth('access_token')
-	@Get('customer/:customerId')
-	async customerInfo(@Param('customerId') customerId: string, @Req() req) {
-		return this.stripeService.customerInfo(customerId, req.user.id);
+	@Get('customer')
+	async customerInfo(@Req() req) {
+		const customerId = req.user.stripeCustomerId;
+		console.log(req.headers.authorization);
+		const token = req.headers.authorization.split(" ").pop()
+		
+		const decoded = await this.jwtService.decode(token);
+		console.log("decoded", decoded);
+		
+        if (!decoded.stripeCustomerId) {
+            throw new BadRequestException('Customer not found');
+        }
+
+        return this.stripeService.customerInfo(decoded.stripeCustomerId, req.user.id);
 	}
 
 	@Post('webhook')
@@ -154,9 +198,19 @@ export class StripeController {
 		@Headers('stripe-signature') signature: string,
 		@Req() req: RawBodyRequest<Request>,
 	) {
-		let payload = req.rawBody;
-		const sig = req.headers['stripe-signature'];
+		// let payload = req.rawBody;
+		// const sig = req.headers['stripe-signature'];
 
-		return this.stripeService.webhook(payload, sig);
+		// return this.stripeService.webhook(payload, sig);
+
+		const payload = req.rawBody;	
+		
+        if (!payload) {
+            throw new BadRequestException('Payload is empty');
+        }
+        if (!signature) {
+            throw new BadRequestException('Stripe-Signature is missing');
+        }
+        return this.stripeService.webhook(payload, signature);
 	}
 }

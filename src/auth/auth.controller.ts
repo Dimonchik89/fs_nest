@@ -44,6 +44,7 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { UNAUTHORIZED_EXAMPLE } from '../app.constants';
 import clientConfig from './config/client.config';
 import { ConfigType } from '@nestjs/config';
+import { Response } from 'express';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -195,6 +196,7 @@ export class AuthController {
 	@Get('google/login')
 	googleLogin() {}
 
+
 	@ApiOperation({
 		summary:
 			'Endpoint to which redirection will occur after Google confirms the login. It will receive all the necessary data, create a user and redirect to the client page with the addition of searchParameters',
@@ -207,6 +209,33 @@ export class AuthController {
 			`${this.clientConfiguration.clientURL}/login?access_token=${response.access_token}&refresh_token=${response.refresh_token}`,
 		);
 	}
+
+	// ---------------------- тестовый вариант, передача токена как защещенные cookie ({ passthrough: true } и httpOnly: true) к которому нет доступа из js но
+	// ------------------------------ он автоматически добавляеться к каждлму запросу. Если оставить этот пожход то изменить и другие ендпоинты (register, login, refresh), убрать у них отправку
+	// ------------------------------- токенов в теле запроса и добавить отправку токенов в cookie
+	// @UseGuards(GoogleAuthGuard)
+	// @Get('google/callback')
+	// async googleCallback(@Req() req, @Res({ passthrough: true }) res: Response) {
+	// 	const response = await this.authService.login(req.user);
+
+	// 	// Устанавливаем куки с токенами
+	// 	res.cookie('access_token', response.access_token, {
+	// 		httpOnly: true,
+	// 		secure: true,
+	// 		sameSite: 'lax',
+	// 		expires: new Date(Date.now() + 3600000), // Срок жизни access_token
+	// 	});
+
+	// 	res.cookie('refresh_token', response.refresh_token, {
+	// 		httpOnly: true,
+	// 		secure: true,
+	// 		sameSite: 'lax',
+	// 		expires: new Date(Date.now() + 7 * 24 * 3600000), // Срок жизни refresh_token
+	// 	});
+
+	// 	// Редирект без токенов в URL
+	// 	res.redirect(`${this.clientConfiguration.clientURL}/profile`);
+	// }
 
 	// -------------------- Тестовый брекпоинт для проверки доступа к роуту по роли
 	@Roles(Role.ADMIN)

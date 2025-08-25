@@ -46,5 +46,6 @@ import clientConfig from './config/client.config';
 		// },
 		...userProviders,
 	],
+	exports: [AuthService],
 })
 export class AuthModule {}

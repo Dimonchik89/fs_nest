@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 // import { ensureDir, writeFile, pathExists, remove } from 'fs-extra';
 import { path } from 'app-root-path';
 import { format } from 'date-fns';
@@ -13,6 +13,7 @@ import { User } from '../entities/user.entity';
 
 import * as fsExtra from 'fs-extra';
 import { promises as fsPromises } from 'fs';
+import { v4 as uuidv4 } from 'uuid'
 
 const UPLOADS_BASE_PATH = './uploads';
 
@@ -25,47 +26,48 @@ export class FilesService {
 	) {}
 
 	async createFolder(userPath): Promise<string> {
-		const folderPath = `${path}/uploads/${userPath}`;
+		const folderPath = join(path, UPLOADS_BASE_PATH, userPath);
 		await fsExtra.ensureDir(folderPath);
 		return folderPath;
 	}
 
     async uploadFiles(
         files: Array<Express.Multer.File>,
-        bearerToken: string,
+        reqUser: { id: string; email: string, role: Role },
     ): Promise<File[]> {
-        const access_token = bearerToken.split(' ')[1];
+		const { email, id, role } = reqUser;		
 
-        const { id, email } = await this.jwtService.decode(access_token);
         if (!id || !email) {
             throw new UnauthorizedException('Invalid token payload.');
         }
 
-        const user = await this.userRepository.findByPk(id);
+		const user = await this.userRepository.findOne({ where: { id } });
+		
         if (!user) {
             throw new UnauthorizedException('User not found.');
         }
+
+
         const maxFolderSizeMb = user.maxFolderSize;
         const maxFolderSizeBytes = maxFolderSizeMb * 1024 * 1024;
 
-        const uploadFolder = join(path, UPLOADS_BASE_PATH, email); // Исправлен join, используя 'path' из app-root-path
+        const uploadFolder = join(path, UPLOADS_BASE_PATH, email);
         await fsExtra.ensureDir(uploadFolder);
 
         let currentTotalFolderSize = 0;
+
+		
+
         try {
-            // Используем асинхронную версию readdir из fsPromises
             const existingFileNames = await fsPromises.readdir(uploadFolder);
             for (const fileName of existingFileNames) {
                 const filePath = join(uploadFolder, fileName);
-                // Используем асинхронную версию stat из fsPromises
                 const stats = await fsPromises.stat(filePath);
                 currentTotalFolderSize += stats.size;
             }
-        } catch (error: any) { // Добавлено any для типа ошибки
-            if (error.code !== 'ENOENT') {
-                console.error(`Error reading directory ${uploadFolder}:`, error);
-                throw error; // Перебрасываем, если это не просто отсутствие папки
-            }
+        } catch (error: any) {
+			console.error(`Error reading directory ${uploadFolder}:`, error);
+			throw new InternalServerErrorException('Failed to calculate folder size.');
         }
 
         const incomingFilesTotalSize = files.reduce((sum, file) => sum + file.size, 0);
@@ -79,42 +81,41 @@ export class FilesService {
         const createdFiles: File[] = [];
 
         for (const file of files) {
-            const date = format(new Date(), 'dd-MM-yyyy');
             const { originalname, buffer, size } = file;
             
             const lastDotIndex = originalname.lastIndexOf('.');
-            const fileNamePart = lastDotIndex !== -1 ? originalname.substring(0, lastDotIndex) : originalname;
             const fileExtPart = lastDotIndex !== -1 ? originalname.substring(lastDotIndex + 1) : '';
 
-            const newFileName = `${fileNamePart}_${date}.${fileExtPart}`;
-            const fullFilePath = join(uploadFolder, newFileName);
+            const uniqueServerFileName = `${uuidv4()}.${fileExtPart}`
+            const fullFilePath = join(uploadFolder, uniqueServerFileName);
 
-            const hasOldFileWithThisName = await this.fileRepository.findOne({
-                where: { filePath: fullFilePath },
+            const existingFileByOriginalName = await this.fileRepository.findOne({
+                where: {
+                    userId: id,
+                    originalName: originalname,
+                },
             });
 
-            if (hasOldFileWithThisName) {
-                await this.fileRepository.destroy({
-                    where: { id: hasOldFileWithThisName.id },
-                });
+            if (existingFileByOriginalName) {
                 try {
-                    // Используем асинхронную версию unlink из fsPromises
-                    await fsPromises.unlink(fullFilePath);
+                    await fsPromises.unlink(existingFileByOriginalName.filePath);
                 } catch (unlinkError: any) {
                     if (unlinkError.code !== 'ENOENT') {
                         console.warn(`Could not delete old file ${fullFilePath}:`, unlinkError);
                     }
                 }
+				await this.fileRepository.destroy({
+                    where: { id: existingFileByOriginalName.id },
+                });
             }
 
-            // Используем асинхронную версию writeFile из fsPromises
             await fsPromises.writeFile(fullFilePath, buffer);
 
             const createdFile = await this.fileRepository.create({
                 filePath: fullFilePath,
                 userId: id,
                 fileExt: fileExtPart,
-                fileName: newFileName,
+                fileName: uniqueServerFileName,
                 originalName: originalname,
                 size: size,
             });
@@ -179,39 +180,41 @@ export class FilesService {
 	// 	return createdFile;
 	// }
 
-	async deleteFile(id: string, email: string): Promise<DeleteFileResponse> {
-		const file = await this.fileRepository.findOne({ where: { id } });
+	async deleteFile(fileId: string, userId: string): Promise<DeleteFileResponse> {
+		const file = await this.fileRepository.findOne({ where: { id: fileId, userId } });
 		if (!file) {
 			throw new BadRequestException(FILE_NOT_FOUND);
 		}
 
-		const deletedFileName = file.filePath.split('/').pop();
+		const fullFilePathToDelete = file.filePath;
 		// const folderPath = join(`${path}/uploads/${email}`, deletedFileName);
-		const folderPath = join(path, UPLOADS_BASE_PATH, email, deletedFileName);
-		const res = await fsExtra.pathExists(folderPath);
+		// const folderPath = join(path, UPLOADS_BASE_PATH, email, deletedFileName);
+		const res = await fsExtra.pathExists(fullFilePathToDelete);
 		if (!res) {
 			throw new BadRequestException(FILE_NOT_FOUND);
 		}
-		await fsExtra.remove(folderPath);
-		await this.fileRepository.destroy({ where: { id } });
+		
+		await fsExtra.remove(fullFilePathToDelete);
+		await this.fileRepository.destroy({ where: { id: fileId } });
 
 		return {
 			statusCode: 200,
-			message: `${deletedFileName} file was deleted`,
+			message: `${file.originalName || file.fileName} file was deleted`,
 		};
 	}
 
-	async getAllUserFiles(userId: string, page: string): Promise<File[]> {
+	async getAllUserFiles(userId: string, page: string): Promise<{ rows: File[]; count: number }> {
 		const currentPage = page || 1;
 		const limit = 10;
 		const offset = (Number(currentPage) - 1) * limit;
 
-		const files = this.fileRepository.findAll({
+		const data = this.fileRepository.findAndCountAll({
 			where: { userId },
 			offset,
 			limit,
+			order: [['createdAt', 'DESC']]
 		});
-		return files;
+		return data;
 	}
 
 	// async downloadFile(id: string, userId: string) {
@@ -226,24 +229,22 @@ export class FilesService {
 	// 		fileName,
 	// 	};
 	// }
-	async downloadFile(id: string, bearerToken: string): Promise<{ filePath: string; fileName: string }> {
-        const access_token = bearerToken.split(' ')[1];
-        const { id: userId } = await this.jwtService.decode(access_token);
+	async downloadFile(id: string, userId: string): Promise<{ filePath: string; fileName: string }> {
+        // const access_token = bearerToken.split(' ')[1];
+        // const { id: userId } = await this.jwtService.decode(access_token);
         if (!userId) {
             throw new UnauthorizedException('Invalid token payload.');
         }
 
-        // Находим файл в базе данных по ID файла и ID пользователя
         const file = await this.fileRepository.findOne({ where: { id, userId } });
 
         if (!file) {
             throw new BadRequestException(FILE_NOT_FOUND);
         }
 
-        // Возвращаем путь к файлу и его оригинальное имя
         return {
             filePath: file.filePath,
-			fileName: file.filePath.split('/').pop(), // Постарайтесь использовать оригинальное имя
+			fileName: file.originalName,
             // fileName: file?.originalName || file?.fileName || file.filePath.split('/').pop(), // Постарайтесь использовать оригинальное имя
         };
     }

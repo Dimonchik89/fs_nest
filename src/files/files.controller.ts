@@ -108,7 +108,8 @@ export class FilesController {
 		@Headers('Authorization') bearerToken: string,
 		@Req() req: any,
 	) {
-		return this.filesService.uploadFiles(files, bearerToken);
+		// return this.filesService.uploadFiles(files, bearerToken);
+		return this.filesService.uploadFiles(files, req.user);
 	}
 
 	@ApiOperation({
@@ -138,7 +139,7 @@ export class FilesController {
 	@UseGuards(JwtAuthGuard)
 	@Delete('delete/:id')
 	deleteFile(@Param('id') id: string, @Req() req) {
-		return this.filesService.deleteFile(id, req.user.email);
+		return this.filesService.deleteFile(id, req.user.id);
 	}
 
 	@ApiOperation({
@@ -198,22 +199,17 @@ export class FilesController {
 
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth('access_token')
-    @ApiOperation({ summary: 'Download a file by ID' })
+    @ApiOperation({ summary: 'Download a file by ID. Add access_token to download file' })
     @ApiResponse({ status: 200, description: 'File downloaded successfully', type: 'string' })
     @ApiResponse({ status: 400, description: BAD_REQUEST, examples: { FILE_NOT_FOUND_EXAMPLE } })
     @ApiResponse({ status: 401, description: UNAUTHORIZED_ERROR, example: UNAUTHORIZED_EXAMPLE })
-	@Get('download/:id') // Пример маршрута для скачивания
+	@Get('download/:id')
     async downloadFile(
         @Param('id') id: string,
         @Req() req: any,
         @Res() res: Response,
-    ) {
-        const bearerToken = req.headers.authorization;
-        if (!bearerToken) {
-            throw new UnauthorizedException('Authorization header is missing.');
-        }
-
-        const { filePath, fileName } = await this.filesService.downloadFile(id, bearerToken);
+    ) {		
+        const { filePath, fileName } = await this.filesService.downloadFile(id, req.user.id);
 
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);

@@ -2,6 +2,7 @@ import {
 	AllowNull,
 	Column,
 	DataType,
+	Default,
 	HasMany,
 	Model,
 	PrimaryKey,
@@ -10,6 +11,7 @@ import {
 import { File } from './file.entity';
 import { Role } from '../auth/enums/role.enum';
 import { DataTypes } from 'sequelize';
+import { SubscriptionEnum } from 'src/stripe/stripe.types';
 
 @Table
 export class User extends Model {
@@ -37,8 +39,9 @@ export class User extends Model {
 
 	@Column({ allowNull: true })
 	hashedRefreshToken: string;
-
+ 
 	@AllowNull(false)
+	@Default(SubscriptionEnum.free)
 	@Column
 	subscription: string;
 

@@ -4,10 +4,12 @@ import { StripeService } from './stripe.service';
 import { userProviders } from '../user/user.providers';
 import { JwtModule } from '@nestjs/jwt';
 import jwtConfig from '../auth/config/jwt.config';
+import { StripeWebhookService } from './stripe-webhook.service';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-	imports: [JwtModule.registerAsync(jwtConfig.asProvider())],
+	imports: [AuthModule, JwtModule.registerAsync(jwtConfig.asProvider())],
 	controllers: [StripeController],
-	providers: [StripeService, ...userProviders],
+	providers: [StripeService, StripeWebhookService, ...userProviders],
 })
 export class StripeModule {}

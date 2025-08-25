@@ -19,6 +19,7 @@ import refreshJwtConfig from './config/refresh-jwt-config';
 import { ConfigType } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import { Role } from './enums/role.enum';
+import { SubscriptionEnum } from 'src/stripe/stripe.types';
 
 @Injectable()
 export class AuthService {
@@ -45,11 +46,12 @@ export class AuthService {
 
 	async createUser(dto: RegisterDto): Promise<TailUserForToken> {
 		const salt = await genSalt(10);
-		const folderPath = await this.filesService.createFolder(dto.login);
+		const folderPath = await this.filesService.createFolder(dto.login);		
+
 		const newUser = await this.userRepository.create({
 			email: dto.login,
 			passwordHash: await hash(dto.password, salt),
-			subscription: 'free',
+			subscription: SubscriptionEnum.free,
 			maxFolderSize: 50,
 			folderPath,
 			role: dto.role,
@@ -93,10 +95,6 @@ export class AuthService {
 			access_token: accessToken,
 			refresh_token: refreshToken,
 		};
-		// return await this.userRepository.findOne({
-		// 	where: { id: user.id },
-		// 	include: [File],
-		// });
 	}
 
 	async generateTokens(user: TailUserForToken) {
@@ -158,14 +156,7 @@ export class AuthService {
 			role,
 		});
 		
-		// const hashedRefreshToken = await argon2.hash(refreshToken);
-		// await this.updateHashedRefreshToken(id, hashedRefreshToken);
 		await this.updateHashedRefreshToken(id, refreshToken);
-
-		// console.log('refreshToken!!!', {
-		// 	hashedRefreshToken: hashedRefreshToken,
-		// 	refresh_token: refreshToken,
-		// });
 
 		return {
 			access_token: accessToken,

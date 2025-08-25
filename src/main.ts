@@ -1,14 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
+import { json } from 'express';
 import * as bodyParser from 'body-parser';
+
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule, { rawBody: true });
 	// app.enableCors({
 	// 	origin: 'http://localhost:3002',
 	// });
+
 	app.enableCors();
 	app.setGlobalPrefix('api');
 	// проверка соотвецтвие входящих с клиента данных во всем проекте
@@ -54,8 +56,4 @@ async function bootstrap() {
 }
 bootstrap();
 
-// stripe listen --forward-to localhost:3000/stripe/webhook
-
-
-
-// проверь пожалуйста сервис validateRefreshToken  у меня почемуто ошибка при проверке токена который приходит от клиента и захешированного токена который мы получаем с сервера. когда происходит метод argon2.verify то он всегда возвращает false, тоесть токени не совпадают. но вроде все написано нормально и должно быть нормально. проверь все ли там правильно и в логике работы этого сервиса. и напиш все ли правльно. только не исправляй код а напиши в чат что нужно исправить. ответь на руском
+// stripe listen --forward-to localhost:3001/api/stripe/webhook

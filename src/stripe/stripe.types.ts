@@ -1,3 +1,5 @@
+import Stripe from 'stripe';
+
 export interface StripePrice {
 	id: string;
 	object: string;
@@ -22,27 +24,31 @@ export interface StripePrice {
 
 export interface Metadata {}
 
-export interface StripeProduct {
-	id: string;
-	object: string;
-	active: boolean;
-	attributes: any[];
-	created: number;
-	default_price: string;
-	description: string;
-	images: any[];
-	livemode: boolean;
-	marketing_features: any[];
-	metadata: Metadata2;
-	name: string;
-	package_dimensions: any;
-	shippable: any;
-	statement_descriptor: any;
-	tax_code: any;
-	type: string;
-	unit_label: any;
-	updated: number;
-	url: any;
+// export interface StripeProduct {
+// 	id: string;
+// 	object: string;
+// 	active: boolean;
+// 	attributes: any[];
+// 	created: number;
+// 	default_price: string;
+// 	description: string;
+// 	images: any[];
+// 	livemode: boolean;
+// 	marketing_features: any[];
+// 	metadata: Metadata2;
+// 	name: string;
+// 	package_dimensions: any;
+// 	shippable: any;
+// 	statement_descriptor: any;
+// 	tax_code: any;
+// 	type: string;
+// 	unit_label: any;
+// 	updated: number;
+// 	url: any;
+// }
+
+export interface StripeProduct extends Stripe.Product {
+    attributes?: string[];
 }
 
 export interface Metadata2 {}

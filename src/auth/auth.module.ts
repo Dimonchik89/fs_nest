@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { ConfigModule } from '@nestjs/config';
@@ -17,6 +17,7 @@ import { RolesGuard } from './guards/roles.guard';
 import googleOathConfig from './config/google-oath.config';
 import { GoogleStrategy } from './strategies/google.strategy';
 import clientConfig from './config/client.config';
+import { StripeModule } from '../stripe/stripe.module';
 
 @Module({
 	controllers: [AuthController],
@@ -29,6 +30,7 @@ import clientConfig from './config/client.config';
 		ConfigModule.forFeature(clientConfig),
 		PassportModule,
 		FilesModule,
+		forwardRef(() => StripeModule),
 	],
 	providers: [
 		AuthService,

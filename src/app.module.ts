@@ -5,7 +5,10 @@ import { FilesModule } from './files/files.module';
 import { JwtModule } from '@nestjs/jwt';
 import { StripeModule } from './stripe/stripe.module';
 import { DatabaseModule } from './database/database.module';
+import { PostsModule } from './posts/posts.module';
 import jwtConfig from './auth/config/jwt.config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
 	imports: [
@@ -16,13 +19,18 @@ import jwtConfig from './auth/config/jwt.config';
 		// }),
 		// JwtModule.registerAsync(jwtConfig.asProvider()),
 		// JwtModule.registerAsync(jwtConfig.asProvider()),
+		ServeStaticModule.forRoot({
+			rootPath: join(__dirname, '..', '..', 'uploads'),
+			serveRoot: '/uploads',
+		}),
 		ConfigModule.forRoot({
 			isGlobal: true,
 		}),
 		AuthModule,
 		FilesModule,
 		StripeModule,
-		DatabaseModule, // убрал подключение с auth.module и перенес сяда
+		DatabaseModule,
+		PostsModule,
 	],
 })
 export class AppModule {}

@@ -1,4 +1,10 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+	Inject,
+	Injectable,
+	InternalServerErrorException,
+	UnauthorizedException,
+	forwardRef,
+} from '@nestjs/common';
 import { AuthDto, RegisterDto } from './dto/auth.dto';
 import { hash, genSalt, compare } from 'bcryptjs';
 import { FilesService } from '../files/files.service';
@@ -14,25 +20,31 @@ import {
 	UserAccessTokenAndRefreshToken,
 } from '../user/user.types';
 import { User } from '../entities/user.entity';
-import { File } from '../entities/file.entity';
 import refreshJwtConfig from './config/refresh-jwt-config';
 import { ConfigType } from '@nestjs/config';
 import * as argon2 from 'argon2';
-import { Role } from './enums/role.enum';
 import { SubscriptionEnum } from 'src/stripe/stripe.types';
+import { path } from 'app-root-path';
+import { promises as fsPromises } from 'fs';
+import { join } from 'path';
+import { StripeService } from '../stripe/stripe.service';
 
 @Injectable()
 export class AuthService {
 	constructor(
 		@Inject('USER_REPOSITORY') private userRepository: typeof User,
-		private readonly filesService: FilesService,
-		private jwtService: JwtService,
 		@Inject(refreshJwtConfig.KEY)
 		private refreshTokenConfig: ConfigType<typeof refreshJwtConfig>,
+		private readonly filesService: FilesService,
+		private jwtService: JwtService,
+		@Inject(forwardRef(() => StripeService))
+		private readonly stripeService: StripeService,
 	) {}
 
 	async updateHashedRefreshToken(userId: string, refreshToken: string) {
 		const hashedRefreshToken = await argon2.hash(refreshToken);
+
+		console.log('updateHashedRefreshToken', userId, refreshToken);
 
 		return await this.userRepository.update(
 			{ hashedRefreshToken },
@@ -46,7 +58,8 @@ export class AuthService {
 
 	async createUser(dto: RegisterDto): Promise<TailUserForToken> {
 		const salt = await genSalt(10);
-		const folderPath = await this.filesService.createFolder(dto.login);		
+		const folderPath = await this.filesService.createFolder(dto.login);
+		const customerId = await this.stripeService.createStripeCustomer(dto.login);
 
 		const newUser = await this.userRepository.create({
 			email: dto.login,
@@ -55,6 +68,7 @@ export class AuthService {
 			maxFolderSize: 50,
 			folderPath,
 			role: dto.role,
+			stripeCustomerId: customerId,
 		});
 
 		const tailUser = {
@@ -129,21 +143,42 @@ export class AuthService {
 
 	// -------------------------------- Посмотреть на необходимость наличия этой функции
 	async getProfile(userId: string) {
-		const { id, email, subscription, stripeCustomerId, role } =
+		const { id, email, subscription, stripeCustomerId, role, maxFolderSize } =
 			await this.userRepository.findOne({
 				where: { id: userId },
 			});
+
+		const maxFolderSizeBytes = maxFolderSize * 1024 * 1024;
+
+		const uploadFolder = join(path, process.env.UPLOADS_BASE_PATH, email);
+		let currentTotalFolderSize = 0;
+
+		try {
+			const existingFileNames = await fsPromises.readdir(uploadFolder);
+			for (const fileName of existingFileNames) {
+				const filePath = join(uploadFolder, fileName);
+				const stat = await fsPromises.stat(filePath);
+				currentTotalFolderSize += stat.size;
+			}
+		} catch (error) {
+			throw new InternalServerErrorException(
+				'We cannot retrieve storage size information.',
+			);
+		}
+
 		return {
 			id,
 			email,
 			subscription,
 			stripeCustomerId,
 			role,
+			maxFolderSize: maxFolderSizeBytes,
+			currentTotalFolderSize,
 		};
 	}
 
 	// -------------------------------- Посмотреть на необходимость наличия этой функции
-	async refreshToken(userId: string) {		
+	async refreshToken(userId: string) {
 		const { id, email, subscription, stripeCustomerId, role } =
 			await this.userRepository.findOne({
 				where: { id: userId },
@@ -156,7 +191,7 @@ export class AuthService {
 			stripeCustomerId,
 			role,
 		});
-		
+
 		await this.updateHashedRefreshToken(id, refreshToken);
 
 		return {
@@ -171,13 +206,10 @@ export class AuthService {
 	): Promise<{ id: string; email: string }> {
 		const user = await this.userRepository.findOne({ where: { id: userId } });
 
-		
-		
-
-		if (!user || !user.hashedRefreshToken) {			
+		if (!user || !user.hashedRefreshToken) {
 			throw new UnauthorizedException(INVALID_TOKEN_ERROR);
 		}
-		
+
 		const refreshTokenMatches = await argon2.verify(
 			user.hashedRefreshToken,
 			refreshToken,

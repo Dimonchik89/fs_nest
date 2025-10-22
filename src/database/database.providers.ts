@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize-typescript';
 import { User } from '../entities/user.entity';
 import { File } from '../entities/file.entity';
+import { Post } from '../entities/post.entity';
 
 export const databaseProviders = [
 	{
@@ -14,7 +15,7 @@ export const databaseProviders = [
 				password: process.env.POSTGRES_PASSWORD,
 				database: process.env.POSTGRES_DB,
 			});
-			sequelize.addModels([User, File]);
+			sequelize.addModels([User, File, Post]);
 			// sequelize.addModels([__dirname + '../**/*.entity{.ts,.js}']); work with typeorm
 			await sequelize.sync();
 			return sequelize;

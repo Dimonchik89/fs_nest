@@ -1,7 +1,6 @@
 import {
 	Controller,
 	Delete,
-	FileTypeValidator,
 	Get,
 	Headers,
 	HttpCode,
@@ -11,8 +10,6 @@ import {
 	Query,
 	Req,
 	Res,
-	UnauthorizedException,
-	UploadedFile,
 	UploadedFiles,
 	UseGuards,
 	UseInterceptors,
@@ -35,14 +32,12 @@ import {
 	FILE_UPLOAD_SUCCESSFULLY_EXAMPLE,
 	FILE_VALIDATION_FAILED_EXAMPLE,
 	GET_USER_FILES_SUCCESS_EXAMPLE,
-	FILE_NOT_FOUND,
 } from './files.constants';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
-import { FileUploadDto } from './dto/file.dto';
 import { BAD_REQUEST, UNAUTHORIZED_EXAMPLE } from '../app.constants';
 import { UNAUTHORIZED_ERROR } from '../auth/auth.constants';
 import { Response } from 'express';
-import { createReadStream } from 'fs'
+import { createReadStream } from 'fs';
 
 @ApiTags('files')
 @Controller('files')
@@ -58,17 +53,18 @@ export class FilesController {
 		// description: 'Form with file',
 		// type: FileUploadDto,
 		schema: {
-            type: 'object',
-            properties: {
-                file: { // Имя поля должно соответствовать 'file' в FilesInterceptor
-                    type: 'array',
-                    items: {
-                        type: 'string',
-                        format: 'binary',
-                    },
-                },
-            },
-        },
+			type: 'object',
+			properties: {
+				file: {
+					// Имя поля должно соответствовать 'file' в FilesInterceptor
+					type: 'array',
+					items: {
+						type: 'string',
+						format: 'binary',
+					},
+				},
+			},
+		},
 	})
 	@ApiResponse({
 		status: 201,
@@ -101,7 +97,7 @@ export class FilesController {
 					// new MaxFileSizeValidator({ maxSize: 1000 })
 					// new FileTypeValidator({ fileType: '.(pdf|png)' }),
 				],
-				fileIsRequired: true
+				fileIsRequired: true,
 			}),
 		)
 		files: Array<Express.Multer.File>,
@@ -146,7 +142,11 @@ export class FilesController {
 		summary:
 			'Get all user files. Add access_token to see all files in your directory',
 	})
-	@ApiQuery({ name: 'page', required: false, description: 'Page number' })
+	@ApiQuery({
+		name: 'page',
+		required: false,
+		description: 'Page number',
+	})
 	@ApiResponse({
 		status: 200,
 		description: 'Get user files',
@@ -196,33 +196,49 @@ export class FilesController {
 	// 	return res.send(file);
 	// }
 
-
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth('access_token')
-    @ApiOperation({ summary: 'Download a file by ID. Add access_token to download file' })
-    @ApiResponse({ status: 200, description: 'File downloaded successfully', type: 'string' })
-    @ApiResponse({ status: 400, description: BAD_REQUEST, examples: { FILE_NOT_FOUND_EXAMPLE } })
-    @ApiResponse({ status: 401, description: UNAUTHORIZED_ERROR, example: UNAUTHORIZED_EXAMPLE })
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth('access_token')
+	@ApiOperation({
+		summary: 'Download a file by ID. Add access_token to download file',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'File downloaded successfully',
+		type: 'string',
+	})
+	@ApiResponse({
+		status: 400,
+		description: BAD_REQUEST,
+		examples: { FILE_NOT_FOUND_EXAMPLE },
+	})
+	@ApiResponse({
+		status: 401,
+		description: UNAUTHORIZED_ERROR,
+		example: UNAUTHORIZED_EXAMPLE,
+	})
 	@Get('download/:id')
-    async downloadFile(
-        @Param('id') id: string,
-        @Req() req: any,
-        @Res() res: Response,
-    ) {		
-        const { filePath, fileName } = await this.filesService.downloadFile(id, req.user.id);
+	async downloadFile(
+		@Param('id') id: string,
+		@Req() req: any,
+		@Res() res: Response,
+	) {
+		const { filePath, fileName } = await this.filesService.downloadFile(
+			id,
+			req.user.id,
+		);
 
-        res.setHeader('Content-Type', 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+		res.setHeader('Content-Type', 'application/octet-stream');
+		res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 
-        const fileStream = createReadStream(filePath);
-        fileStream.pipe(res); // Перенаправляем поток файла прямо в ответ
+		const fileStream = createReadStream(filePath);
+		fileStream.pipe(res); // Перенаправляем поток файла прямо в ответ
 
-        fileStream.on('error', (err) => {
-            console.error('Error streaming file:', err);
-            
-            if (!res.headersSent) {
-                res.status(500).send('Error downloading file.');
-            }
-        });
-    }
+		fileStream.on('error', (err) => {
+			console.error('Error streaming file:', err);
+
+			if (!res.headersSent) {
+				res.status(500).send('Error downloading file.');
+			}
+		});
+	}
 }

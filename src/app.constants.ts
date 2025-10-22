@@ -13,3 +13,9 @@ export const NO_SUCH_FILE_OR_DIRECTORY = {
 	error: 'Not Found',
 	statusCode: 404,
 };
+
+export const BAD_REQUEST_EXAMPLE = {
+	message: 'Error message',
+	error: BAD_REQUEST,
+	statusCode: 400,
+};

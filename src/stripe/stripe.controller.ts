@@ -46,7 +46,7 @@ import { JwtService } from '@nestjs/jwt';
 export class StripeController {
 	constructor(
 		private readonly stripeService: StripeService,
-		private jwtService: JwtService
+		private jwtService: JwtService,
 	) {}
 
 	@ApiOperation({ summary: 'Get all products' })
@@ -181,16 +181,18 @@ export class StripeController {
 	async customerInfo(@Req() req) {
 		const customerId = req.user.stripeCustomerId;
 		console.log(req.headers.authorization);
-		const token = req.headers.authorization.split(" ").pop()
-		
-		const decoded = await this.jwtService.decode(token);
-		console.log("decoded", decoded);
-		
-        if (!decoded.stripeCustomerId) {
-            throw new BadRequestException('Customer not found');
-        }
+		const token = req.headers.authorization.split(' ').pop();
 
-        return this.stripeService.customerInfo(decoded.stripeCustomerId, req.user.id);
+		const decoded = await this.jwtService.decode(token);
+
+		if (!decoded.stripeCustomerId) {
+			throw new BadRequestException('Customer not found');
+		}
+
+		return this.stripeService.customerInfo(
+			decoded.stripeCustomerId,
+			req.user.id,
+		);
 	}
 
 	@Post('webhook')
@@ -203,14 +205,14 @@ export class StripeController {
 
 		// return this.stripeService.webhook(payload, sig);
 
-		const payload = req.rawBody;	
-		
-        if (!payload) {
-            throw new BadRequestException('Payload is empty');
-        }
-        if (!signature) {
-            throw new BadRequestException('Stripe-Signature is missing');
-        }
-        return this.stripeService.webhook(payload, signature);
+		const payload = req.rawBody;
+
+		if (!payload) {
+			throw new BadRequestException('Payload is empty');
+		}
+		if (!signature) {
+			throw new BadRequestException('Stripe-Signature is missing');
+		}
+		return this.stripeService.webhook(payload, signature);
 	}
 }

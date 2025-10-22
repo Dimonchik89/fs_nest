@@ -3,17 +3,20 @@ import { BAD_REQUEST } from '../app.constants';
 const FILE_IS_REQUIRE = 'File is required';
 const FILE_VALIDATION_FAILED = 'Validation failed';
 export const FILE_NOT_FOUND = 'File not found';
+export const NOT_FOUND = 'Not Found';
 
 // fileUploadSuccessfully
 
-export const FILE_UPLOAD_SUCCESSFULLY_EXAMPLE = {
-	id: '7295a143-a82c-47f9-b8d7-7d14bb89dwed',
-	filePath: '/example/womens-collection_13-03-2025.png',
-	userId: '9427bcbf-fbf1-41a3-978e-36318ce9fewe',
-	fileExt: 'png',
-	updatedAt: '2025-03-13T08:28:09.289Z',
-	createdAt: '2025-03-13T08:28:09.289Z',
-};
+export const FILE_UPLOAD_SUCCESSFULLY_EXAMPLE = [
+	{
+		id: '7295a143-a82c-47f9-b8d7-7d14bb89dwed',
+		filePath: '/example/womens-collection_13-03-2025.png',
+		userId: '9427bcbf-fbf1-41a3-978e-36318ce9fewe',
+		fileExt: 'png',
+		updatedAt: '2025-03-13T08:28:09.289Z',
+		createdAt: '2025-03-13T08:28:09.289Z',
+	},
+];
 
 export const FILE_IS_REQUIRED_EXAMPLE = {
 	summary: FILE_IS_REQUIRE,

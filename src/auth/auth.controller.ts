@@ -2,11 +2,8 @@ import {
 	BadRequestException,
 	Body,
 	Controller,
-	Delete,
 	Get,
-	Headers,
 	HttpCode,
-	HttpStatus,
 	Inject,
 	Post,
 	Req,
@@ -22,7 +19,6 @@ import {
 	INVALID_PASSWORD_EXAMPLE,
 	USER_ALREADY_REGISTERED_EXAMPLE,
 	USER_NOT_FOUND_EXAMPLE,
-	INVALID_TOKEN_EXAMPLE,
 	PROPERTY_SHOULD_NOT_EXIST_EXAMPLE,
 	USER_ACCESS_TOKEN_AND_REFRESH_TOKEN_EXAMPLE,
 	USER_PROFILE_EXAMPLE,
@@ -44,7 +40,7 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { UNAUTHORIZED_EXAMPLE } from '../app.constants';
 import clientConfig from './config/client.config';
 import { ConfigType } from '@nestjs/config';
-import { Response } from 'express';
+import { join } from 'path';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -120,6 +116,7 @@ export class AuthController {
 	@Post('login')
 	async login(@Body() dto: AuthDto) {
 		const user = await this.authService.validateUser(dto);
+		console.log(join(__dirname, '..', '..', 'uploads'));
 
 		return await this.authService.login(user);
 	}
@@ -196,7 +193,6 @@ export class AuthController {
 	@Get('google/login')
 	googleLogin() {}
 
-
 	@ApiOperation({
 		summary:
 			'Endpoint to which redirection will occur after Google confirms the login. It will receive all the necessary data, create a user and redirect to the client page with the addition of searchParameters',
@@ -205,6 +201,8 @@ export class AuthController {
 	@Get('google/callback')
 	async googleCallback(@Req() req, @Res() res) {
 		const response = await this.authService.login(req.user);
+		console.log('google/callback', response);
+
 		res.redirect(
 			`${this.clientConfiguration.clientURL}/login?access_token=${response.access_token}&refresh_token=${response.refresh_token}`,
 		);
@@ -236,13 +234,4 @@ export class AuthController {
 	// 	// Редирект без токенов в URL
 	// 	res.redirect(`${this.clientConfiguration.clientURL}/profile`);
 	// }
-
-	// -------------------- Тестовый брекпоинт для проверки доступа к роуту по роли
-	@Roles(Role.ADMIN)
-	@UseGuards(RolesGuard)
-	@UseGuards(JwtAuthGuard)
-	@Get('test')
-	getObject() {
-		return { message: 'lalala' };
-	}
 }

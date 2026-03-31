@@ -39,7 +39,7 @@ export class User extends Model {
 
 	@Column({ allowNull: true })
 	hashedRefreshToken: string;
- 
+
 	@AllowNull(false)
 	@Default(SubscriptionEnum.free)
 	@Column

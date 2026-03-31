@@ -9,6 +9,7 @@ import { PostsModule } from './posts/posts.module';
 import jwtConfig from './auth/config/jwt.config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { UserModule } from './user/user.module';
 
 @Module({
 	imports: [
@@ -31,6 +32,7 @@ import { join } from 'path';
 		StripeModule,
 		DatabaseModule,
 		PostsModule,
+		UserModule,
 	],
 })
 export class AppModule {}

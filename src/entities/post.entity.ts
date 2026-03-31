@@ -17,27 +17,30 @@ export class Post extends Model {
 	})
 	id: string;
 
-	@Column
-	title: string;
-
 	@Column(DataType.TEXT)
-	text: string;
+	contentHtml: string;
 
-	@Column
-	link: string;
+	// @Column
+	// title: string;
 
-	@Column(DataType.JSON)
-	requiredFiles: PostImage[];
+	// @Column(DataType.TEXT)
+	// text: string;
 
-	@Column
-	subtitle: string;
+	// @Column
+	// link: string;
 
-	@Column(DataType.TEXT)
-	subtext: string;
+	// @Column(DataType.JSON)
+	// requiredFiles: PostImage[];
 
-	@Column
-	additionalLink: string;
+	// @Column
+	// subtitle: string;
 
-	@Column(DataType.JSON)
-	optionalFiles: PostImage[];
+	// @Column(DataType.TEXT)
+	// subtext: string;
+
+	// @Column
+	// additionalLink: string;
+
+	// @Column(DataType.JSON)
+	// optionalFiles: PostImage[];
 }

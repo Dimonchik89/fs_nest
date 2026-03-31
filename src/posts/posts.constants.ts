@@ -2,40 +2,18 @@ import { BAD_REQUEST } from '../app.constants';
 
 const REQUIRE_FIELDS = 'Required fields';
 
+export const CONTENT_HTML_EXAMPLE =
+	'<article><div><h2 style="color: red">Strawberry title</h2><img style="width: 640px" src="https://hips.hearstapps.com/clv.h-cdn.co/assets/15/22/1432664914-strawberry-facts1.jpg?crop=1xw:0.8332147937411095xh;center,center" alt="strawberry" /><p>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Quisquam omnis rerum cumque deserunt natus nam impedit consequuntur non id illo, dicta et, tenetur aliquam porro amet recusandae, sit odit vero!</p><hr /><h2>Subtitle</h2><p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Animi, a repellat. Corporis fugiat voluptatem quasi dolores optio dicta blanditiis modi inventore necessitatibus corrupti, ullam consequuntur nam atque sapiente quidem incidunt.</p></div></article>';
+
 export const POST_EXAMPLE = {
-	id: 'ff6a1126-5397-41e0-8f36-bec68f3b8a9a',
-	title: 'first update Title',
-	text: 'first update text',
-	link: 'first update Link',
-	subtitle: 'Optional first Title',
-	additionalLink: 'Additiona first Link',
-	requiredFiles: [
-		{
-			title: 'sale-banner.svg',
-			src: 'posts/8c74f6f5-e70d-4ca6-8313-9c72750859c8.svg',
-		},
-		{
-			title: 'sale-backdrop.svg',
-			src: 'posts/c5ae191b-bf08-44f1-865e-c541a0c0475a.svg',
-		},
-	],
-	optionalFiles: [
-		{
-			title: 'Violin Fantasy (1).mp3',
-			src: 'posts/6e2d6965-1cf7-4f09-a4c7-742f839264de.mp3',
-		},
-		{
-			title: 'Violin Fantasy.mp3',
-			src: 'posts/d7c09aec-7961-4228-aa71-571e98953d7f.mp3',
-		},
-	],
-	updatedAt: '2025-10-13T07:10:36.351Z',
-	createdAt: '2025-10-13T07:10:36.351Z',
-	subtext: null,
+	id: '0673b8af-5e55-4ad7-a246-6120ac62c2cf',
+	contentHtml: CONTENT_HTML_EXAMPLE,
+	createdAt: '2026-01-05T09:29:41.141Z',
+	updatedAt: '2026-01-05T09:29:41.141Z',
 };
 
 export const CREATE_FILE_ERROR_REQUIRE_FIELDS_EXAMPLE = {
-	message: ['title must be a string', 'text must be a string'],
+	message: ['contentHtml must be a string'],
 	error: 'Bad Request',
 	statusCode: 400,
 };

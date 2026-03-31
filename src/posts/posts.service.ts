@@ -10,6 +10,7 @@ import { promises as fsPromises } from 'fs';
 import { NOT_FOUND } from '../files/files.constants';
 import { BAD_REQUEST } from '../app.constants';
 import { FindAllPostResponse, PostImage, PostSuccess } from './post.types';
+import * as sanitizeHtml from 'sanitize-html';
 
 @Injectable()
 export class PostsService {
@@ -47,40 +48,65 @@ export class PostsService {
 		return createdFiles;
 	}
 
-	async create({
-		createPostDto,
-		optionalFiles,
-		requiredFiles,
-	}: {
-		requiredFiles?: Express.Multer.File[];
-		optionalFiles?: Express.Multer.File[];
-		createPostDto: CreatePostDto;
-	}): Promise<Post> {
+	// async create({
+	// 	createPostDto,
+	// 	optionalFiles,
+	// 	requiredFiles,
+	// }: {
+	// 	requiredFiles?: Express.Multer.File[];
+	// 	optionalFiles?: Express.Multer.File[];
+	// 	createPostDto: CreatePostDto;
+	// }): Promise<Post> {
+	// 	try {
+	// 		const pathRequiredFilesArray = await this.uploadArrayFiles({
+	// 			files: requiredFiles,
+	// 		});
+	// 		let pathOptionalFilesArray = null;
+	// 		let createdPost: Post | null = null;
+
+	// 		if (optionalFiles) {
+	// 			pathOptionalFilesArray = await this.uploadArrayFiles({
+	// 				files: optionalFiles,
+	// 			});
+	// 		}
+
+	// 		if (pathOptionalFilesArray) {
+	// 			createdPost = await this.postRepository.create({
+	// 				...createPostDto,
+	// 				requiredFiles: pathRequiredFilesArray,
+	// 				optionalFiles: pathOptionalFilesArray,
+	// 			});
+	// 		} else {
+	// 			createdPost = await this.postRepository.create({
+	// 				...createPostDto,
+	// 				requiredFiles: pathRequiredFilesArray,
+	// 			});
+	// 		}
+
+	// 		return createdPost;
+	// 	} catch (error) {
+	// 		throw new BadRequestException(error.message);
+	// 	}
+	// }
+	async create(createPostDto: CreatePostDto): Promise<Post> {
 		try {
-			const pathRequiredFilesArray = await this.uploadArrayFiles({
-				files: requiredFiles,
+			const cleanHtml = sanitizeHtml(createPostDto.contentHtml, {
+				allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+					'img',
+					'h1',
+					'h2',
+					'iframe',
+				]),
+				allowedAttributes: {
+					'*': ['class', 'style'],
+					a: ['href', 'target'],
+					img: ['src', 'alt'],
+				},
 			});
-			let pathOptionalFilesArray = null;
-			let createdPost: Post | null = null;
 
-			if (optionalFiles) {
-				pathOptionalFilesArray = await this.uploadArrayFiles({
-					files: optionalFiles,
-				});
-			}
-
-			if (pathOptionalFilesArray) {
-				createdPost = await this.postRepository.create({
-					...createPostDto,
-					requiredFiles: pathRequiredFilesArray,
-					optionalFiles: pathOptionalFilesArray,
-				});
-			} else {
-				createdPost = await this.postRepository.create({
-					...createPostDto,
-					requiredFiles: pathRequiredFilesArray,
-				});
-			}
+			const createdPost = await this.postRepository.create({
+				contentHtml: cleanHtml,
+			});
 
 			return createdPost;
 		} catch (error) {
@@ -123,145 +149,190 @@ export class PostsService {
 	async update({
 		id,
 		updatePostDto,
-		optionalFiles = [],
-		requiredFiles = [],
 	}: {
 		id: string;
 		updatePostDto: UpdatePostDto;
-		requiredFiles?: Express.Multer.File[];
-		optionalFiles?: Express.Multer.File[];
 	}) {
 		try {
 			const oldPost = await this.postRepository.findOne({ where: { id } });
-
-			console.log('requiredFiles', requiredFiles);
-			console.log('optionalFiles', optionalFiles);
 
 			if (!oldPost) {
 				throw new BadRequestException(NOT_FOUND);
 			}
 
-			if (!requiredFiles.length && !optionalFiles.length) {
-				const [count, [updatedPost]] = await this.postRepository.update(
-					updatePostDto,
-					{ where: { id }, returning: true },
-				);
+			const [count, [updatedPost]] = await this.postRepository.update(
+				{
+					...updatePostDto,
+				},
+				{ where: { id }, returning: true },
+			);
 
-				return updatedPost;
-			}
-
-			if (requiredFiles.length && optionalFiles.length) {
-				await this.deletePostImageArray(oldPost.requiredFiles);
-				await this.deletePostImageArray(oldPost.optionalFiles);
-
-				const pathRequiredFilesArray = await this.uploadArrayFiles({
-					files: requiredFiles,
-				});
-				const pathOptionalFilesArray = await this.uploadArrayFiles({
-					files: optionalFiles,
-				});
-
-				const [count, [updatedPost]] = await this.postRepository.update(
-					{
-						...updatePostDto,
-						requiredFiles: pathRequiredFilesArray,
-						optionalFiles: pathOptionalFilesArray,
-					},
-					{ where: { id }, returning: true },
-				);
-
-				return updatedPost;
-			}
-
-			if (requiredFiles.length && !optionalFiles.length) {
-				await this.deletePostImageArray(oldPost.requiredFiles);
-
-				const pathRequiredFilesArray = await this.uploadArrayFiles({
-					files: requiredFiles,
-				});
-
-				const [count, [updatedPost]] = await this.postRepository.update(
-					{
-						...updatePostDto,
-						requiredFiles: pathRequiredFilesArray,
-					},
-					{ where: { id }, returning: true },
-				);
-
-				return updatedPost;
-			}
-
-			if (!requiredFiles.length && optionalFiles.length) {
-				await this.deletePostImageArray(oldPost.optionalFiles);
-
-				const pathOptionalFilesArray = await this.uploadArrayFiles({
-					files: optionalFiles,
-				});
-
-				const [count, [updatedPost]] = await this.postRepository.update(
-					{
-						...updatePostDto,
-						optionalFiles: pathOptionalFilesArray,
-					},
-					{ where: { id }, returning: true },
-				);
-
-				return updatedPost;
-			}
+			return updatedPost;
 		} catch (error) {
 			throw new BadRequestException(error.message);
 		}
-
-		return `This action updates a #${id} post`;
 	}
+
+	// async update({
+	// 	id,
+	// 	updatePostDto,
+	// 	optionalFiles = [],
+	// 	requiredFiles = [],
+	// }: {
+	// 	id: string;
+	// 	updatePostDto: UpdatePostDto;
+	// 	requiredFiles?: Express.Multer.File[];
+	// 	optionalFiles?: Express.Multer.File[];
+	// }) {
+	// 	try {
+	// 		const oldPost = await this.postRepository.findOne({ where: { id } });
+
+	// 		console.log('requiredFiles', requiredFiles);
+	// 		console.log('optionalFiles', optionalFiles);
+
+	// 		if (!oldPost) {
+	// 			throw new BadRequestException(NOT_FOUND);
+	// 		}
+
+	// 		if (!requiredFiles.length && !optionalFiles.length) {
+	// 			const [count, [updatedPost]] = await this.postRepository.update(
+	// 				updatePostDto,
+	// 				{ where: { id }, returning: true },
+	// 			);
+
+	// 			return updatedPost;
+	// 		}
+
+	// 		if (requiredFiles.length && optionalFiles.length) {
+	// 			await this.deletePostImageArray(oldPost.requiredFiles);
+	// 			await this.deletePostImageArray(oldPost.optionalFiles);
+
+	// 			const pathRequiredFilesArray = await this.uploadArrayFiles({
+	// 				files: requiredFiles,
+	// 			});
+	// 			const pathOptionalFilesArray = await this.uploadArrayFiles({
+	// 				files: optionalFiles,
+	// 			});
+
+	// 			const [count, [updatedPost]] = await this.postRepository.update(
+	// 				{
+	// 					...updatePostDto,
+	// 					requiredFiles: pathRequiredFilesArray,
+	// 					optionalFiles: pathOptionalFilesArray,
+	// 				},
+	// 				{ where: { id }, returning: true },
+	// 			);
+
+	// 			return updatedPost;
+	// 		}
+
+	// 		if (requiredFiles.length && !optionalFiles.length) {
+	// 			await this.deletePostImageArray(oldPost.requiredFiles);
+
+	// 			const pathRequiredFilesArray = await this.uploadArrayFiles({
+	// 				files: requiredFiles,
+	// 			});
+
+	// 			const [count, [updatedPost]] = await this.postRepository.update(
+	// 				{
+	// 					...updatePostDto,
+	// 					requiredFiles: pathRequiredFilesArray,
+	// 				},
+	// 				{ where: { id }, returning: true },
+	// 			);
+
+	// 			return updatedPost;
+	// 		}
+
+	// 		if (!requiredFiles.length && optionalFiles.length) {
+	// 			await this.deletePostImageArray(oldPost.optionalFiles);
+
+	// 			const pathOptionalFilesArray = await this.uploadArrayFiles({
+	// 				files: optionalFiles,
+	// 			});
+
+	// 			const [count, [updatedPost]] = await this.postRepository.update(
+	// 				{
+	// 					...updatePostDto,
+	// 					optionalFiles: pathOptionalFilesArray,
+	// 				},
+	// 				{ where: { id }, returning: true },
+	// 			);
+
+	// 			return updatedPost;
+	// 		}
+	// 	} catch (error) {
+	// 		throw new BadRequestException(error.message);
+	// 	}
+
+	// 	return `This action updates a #${id} post`;
+	// }
 
 	async remove(id: string): Promise<PostSuccess> {
 		try {
 			const post = await this.postRepository.findOne({ where: { id } });
 
-			console.log('post', post);
 			if (!post) {
 				throw new BadRequestException('Post not found');
 			}
 
-			let allImagePath = [];
-
-			if (post?.requiredFiles && post?.requiredFiles.length) {
-				allImagePath = [...allImagePath, ...post?.requiredFiles];
-			}
-
-			if (post?.optionalFiles && post?.optionalFiles.length) {
-				allImagePath = [...allImagePath, ...post?.optionalFiles];
-			}
-
-			const requiredPostImagePromise = allImagePath.map(async ({ src }) => {
-				const path = join(__dirname, '..', '..', 'uploads', src);
-				return await fsExtra.pathExists(path);
-			});
-
-			const allImagePathExist = await Promise.all(requiredPostImagePromise);
-
-			const allImagesFound = allImagePathExist.every((item) => item);
-
-			if (!allImagesFound) {
-				throw new BadRequestException(BAD_REQUEST);
-			}
-
-			// allImagePath.forEach(async (imgPath) => {
-			// 	const path = join(__dirname, '..', '..', 'uploads', imgPath);
-			// 	await fsExtra.remove(path);
-			// });
-			await this.deletePostImageArray(allImagePath);
-
 			await this.postRepository.destroy({ where: { id } });
 			return {
 				statusCode: 200,
-				message: `the post ${id} was deleted`,
+				message: `The post ${id} was deleted`,
 			};
 		} catch (error) {
 			throw new BadRequestException(error.message);
 		}
 	}
+
+	// async remove(id: string): Promise<PostSuccess> {
+	// 	try {
+	// 		const post = await this.postRepository.findOne({ where: { id } });
+
+	// 		console.log('post', post);
+	// 		if (!post) {
+	// 			throw new BadRequestException('Post not found');
+	// 		}
+
+	// 		let allImagePath = [];
+
+	// 		if (post?.requiredFiles && post?.requiredFiles.length) {
+	// 			allImagePath = [...allImagePath, ...post?.requiredFiles];
+	// 		}
+
+	// 		if (post?.optionalFiles && post?.optionalFiles.length) {
+	// 			allImagePath = [...allImagePath, ...post?.optionalFiles];
+	// 		}
+
+	// 		const requiredPostImagePromise = allImagePath.map(async ({ src }) => {
+	// 			const path = join(__dirname, '..', '..', 'uploads', src);
+	// 			return await fsExtra.pathExists(path);
+	// 		});
+
+	// 		const allImagePathExist = await Promise.all(requiredPostImagePromise);
+
+	// 		const allImagesFound = allImagePathExist.every((item) => item);
+
+	// 		if (!allImagesFound) {
+	// 			throw new BadRequestException(BAD_REQUEST);
+	// 		}
+
+	// 		// allImagePath.forEach(async (imgPath) => {
+	// 		// 	const path = join(__dirname, '..', '..', 'uploads', imgPath);
+	// 		// 	await fsExtra.remove(path);
+	// 		// });
+	// 		await this.deletePostImageArray(allImagePath);
+
+	// 		await this.postRepository.destroy({ where: { id } });
+	// 		return {
+	// 			statusCode: 200,
+	// 			message: `the post ${id} was deleted`,
+	// 		};
+	// 	} catch (error) {
+	// 		throw new BadRequestException(error.message);
+	// 	}
+	// }
 
 	async deletePostImageArray(arrayPath: PostImage[]) {
 		try {

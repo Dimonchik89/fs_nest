@@ -29,14 +29,12 @@ import {
 	ApiQuery,
 	ApiResponse,
 } from '@nestjs/swagger';
-import {
-	FileFieldsInterceptor,
-	FilesInterceptor,
-} from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import {
+	CONTENT_HTML_EXAMPLE,
 	CREATE_FILE_ERROR_REQUIRE_FIELDS_EXAMPLE,
 	DELETE_FILE_EXAMPLE,
 	GET_POSTS_SUCCESS_EXAMPLE,
@@ -55,35 +53,48 @@ export class PostsController {
 	@ApiOperation({ summary: 'Create a post' })
 	@ApiExtraModels(CreatePostDto)
 	@ApiBearerAuth('access_token')
-	@ApiConsumes('multipart/form-data')
+	// @ApiConsumes('multipart/form-data')
+	// @ApiBody({
+	// 	description: 'Форма создания поста с файлами',
+	// 	schema: {
+	// 		type: 'object',
+	// 		properties: {
+	// 			title: { type: 'string', example: 'Мой пост' },
+	// 			text: { type: 'string', example: 'Основной текст' },
+	// 			subtitle: { type: 'string', example: 'Подзаголовок', nullable: true },
+	// 			subtext: {
+	// 				type: 'string',
+	// 				example: 'Дополнительный текст',
+	// 				nullable: true,
+	// 			},
+	// 			additionalLink: {
+	// 				type: 'string',
+	// 				example: 'https://example.com',
+	// 				nullable: true,
+	// 			},
+	// 			requiredFiles: {
+	// 				type: 'array',
+	// 				items: { type: 'string', format: 'binary' },
+	// 			},
+	// 			optionalFiles: {
+	// 				type: 'array',
+	// 				items: { type: 'string', format: 'binary' },
+	// 			},
+	// 		},
+	// 		required: ['title', 'text', 'requiredFiles'],
+	// 	},
+	// })
 	@ApiBody({
 		description: 'Форма создания поста с файлами',
 		schema: {
 			type: 'object',
 			properties: {
-				title: { type: 'string', example: 'Мой пост' },
-				text: { type: 'string', example: 'Основной текст' },
-				subtitle: { type: 'string', example: 'Подзаголовок', nullable: true },
-				subtext: {
+				contentHtml: {
 					type: 'string',
-					example: 'Дополнительный текст',
-					nullable: true,
-				},
-				additionalLink: {
-					type: 'string',
-					example: 'https://example.com',
-					nullable: true,
-				},
-				requiredFiles: {
-					type: 'array',
-					items: { type: 'string', format: 'binary' },
-				},
-				optionalFiles: {
-					type: 'array',
-					items: { type: 'string', format: 'binary' },
+					example: CONTENT_HTML_EXAMPLE,
 				},
 			},
-			required: ['title', 'text', 'requiredFiles'],
+			required: ['contentHtml'],
 		},
 	})
 	@ApiResponse({
@@ -101,12 +112,12 @@ export class PostsController {
 		description: 'Required fields are missing',
 		example: CREATE_FILE_ERROR_REQUIRE_FIELDS_EXAMPLE,
 	})
-	@UseInterceptors(
-		FileFieldsInterceptor([
-			{ name: 'requiredFiles' },
-			{ name: 'optionalFiles' },
-		]),
-	)
+	// @UseInterceptors(
+	// 	FileFieldsInterceptor([
+	// 		{ name: 'requiredFiles' },
+	// 		{ name: 'optionalFiles' },
+	// 	]),
+	// )
 	@Roles(Role.ADMIN)
 	@UseGuards(RolesGuard)
 	@UseGuards(JwtAuthGuard)
@@ -114,21 +125,28 @@ export class PostsController {
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	@Post()
 	create(
-		@UploadedFiles()
-		files: {
-			requiredFiles?: Express.Multer.File[];
-			optionalFiles?: Express.Multer.File[];
-		},
 		@Headers('Authorization') bearerToken: string,
 		@Req() req: any,
 		@Body() createPostDto: CreatePostDto,
 	) {
-		return this.postsService.create({
-			requiredFiles: files.requiredFiles,
-			optionalFiles: files.optionalFiles,
-			createPostDto,
-		});
+		return this.postsService.create(createPostDto);
 	}
+	// create(
+	// 	@UploadedFiles()
+	// 	files: {
+	// 		requiredFiles?: Express.Multer.File[];
+	// 		optionalFiles?: Express.Multer.File[];
+	// 	},
+	// 	@Headers('Authorization') bearerToken: string,
+	// 	@Req() req: any,
+	// 	@Body() createPostDto: CreatePostDto,
+	// ) {
+	// 	return this.postsService.create({
+	// 		requiredFiles: files.requiredFiles,
+	// 		optionalFiles: files.optionalFiles,
+	// 		createPostDto,
+	// 	});
+	// }
 
 	@ApiOperation({ summary: 'Get all posts' })
 	@ApiQuery({
@@ -182,29 +200,9 @@ export class PostsController {
 		schema: {
 			type: 'object',
 			properties: {
-				title: { type: 'string', example: 'Мой пост' },
-				text: { type: 'string', example: 'Основной текст' },
-				subtitle: { type: 'string', example: 'Подзаголовок', nullable: true },
-				subtext: {
-					type: 'string',
-					example: 'Дополнительный текст',
-					nullable: true,
-				},
-				additionalLink: {
-					type: 'string',
-					example: 'https://example.com',
-					nullable: true,
-				},
-				requiredFiles: {
-					type: 'array',
-					items: { type: 'string', format: 'binary' },
-				},
-				optionalFiles: {
-					type: 'array',
-					items: { type: 'string', format: 'binary' },
-				},
+				contentHtml: { type: 'string', example: CONTENT_HTML_EXAMPLE },
 			},
-			required: ['title', 'text', 'requiredFiles'],
+			required: ['contentHtml'],
 		},
 	})
 	@ApiResponse({
@@ -222,12 +220,12 @@ export class PostsController {
 		description: BAD_REQUEST,
 		example: BAD_REQUEST_EXAMPLE,
 	})
-	@UseInterceptors(
-		FileFieldsInterceptor([
-			{ name: 'requiredFiles' },
-			{ name: 'optionalFiles' },
-		]),
-	)
+	// @UseInterceptors(
+	// 	FileFieldsInterceptor([
+	// 		{ name: 'requiredFiles' },
+	// 		{ name: 'optionalFiles' },
+	// 	]),
+	// )
 	@Roles(Role.ADMIN)
 	@UseGuards(RolesGuard)
 	@UseGuards(JwtAuthGuard)
@@ -237,19 +235,29 @@ export class PostsController {
 		@Param('id') id: string,
 		@Body() updatePostDto: UpdatePostDto,
 		@Headers('Authorization') bearerToken: string,
-		@UploadedFiles()
-		files: {
-			requiredFiles?: Express.Multer.File[];
-			optionalFiles?: Express.Multer.File[];
-		},
 	) {
 		return this.postsService.update({
 			id,
 			updatePostDto,
-			requiredFiles: files.requiredFiles,
-			optionalFiles: files.optionalFiles,
 		});
 	}
+	// update(
+	// 	@Param('id') id: string,
+	// 	@Body() updatePostDto: UpdatePostDto,
+	// 	@Headers('Authorization') bearerToken: string,
+	// 	@UploadedFiles()
+	// 	files: {
+	// 		requiredFiles?: Express.Multer.File[];
+	// 		optionalFiles?: Express.Multer.File[];
+	// 	},
+	// ) {
+	// 	return this.postsService.update({
+	// 		id,
+	// 		updatePostDto,
+	// 		requiredFiles: files.requiredFiles,
+	// 		optionalFiles: files.optionalFiles,
+	// 	});
+	// }
 
 	@ApiOperation({ summary: 'Delete post' })
 	@ApiBearerAuth('access_token')

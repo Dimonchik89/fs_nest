@@ -19,3 +19,9 @@ export const BAD_REQUEST_EXAMPLE = {
 	error: BAD_REQUEST,
 	statusCode: 400,
 };
+
+export const FORBIDDEN_EXAMPLE = {
+	message: 'Forbidden resource',
+	error: 'Forbidden',
+	statusCode: 403,
+};

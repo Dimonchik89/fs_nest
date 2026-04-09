@@ -2,6 +2,7 @@ import {
 	Inject,
 	Injectable,
 	InternalServerErrorException,
+	NotFoundException,
 	UnauthorizedException,
 	forwardRef,
 } from '@nestjs/common';
@@ -28,6 +29,8 @@ import { path } from 'app-root-path';
 import { promises as fsPromises } from 'fs';
 import { join } from 'path';
 import { StripeService } from '../stripe/stripe.service';
+import { v4 as uuidv4 } from 'uuid';
+import { Referrals } from '../entities/referrals.entity';
 
 @Injectable()
 export class AuthService {
@@ -39,6 +42,8 @@ export class AuthService {
 		private jwtService: JwtService,
 		@Inject(forwardRef(() => StripeService))
 		private readonly stripeService: StripeService,
+		@Inject('REFERRALS_REPOSITORY')
+		private referralsRepository: typeof Referrals,
 	) {}
 
 	async updateHashedRefreshToken(userId: string, refreshToken: string) {
@@ -69,6 +74,7 @@ export class AuthService {
 			folderPath,
 			role: dto.role,
 			stripeCustomerId: customerId,
+			referralCode: uuidv4(),
 		});
 
 		const tailUser = {
@@ -143,28 +149,28 @@ export class AuthService {
 
 	// -------------------------------- Посмотреть на необходимость наличия этой функции
 	async getProfile(userId: string) {
-		const { id, email, subscription, stripeCustomerId, role, maxFolderSize } =
+		const { id, email, subscription, stripeCustomerId, role, referralCode } =
 			await this.userRepository.findOne({
 				where: { id: userId },
 			});
 
-		const maxFolderSizeBytes = maxFolderSize * 1024 * 1024;
+		// const maxFolderSizeBytes = maxFolderSize * 1024 * 1024;
 
-		const uploadFolder = join(path, process.env.UPLOADS_BASE_PATH, email);
-		let currentTotalFolderSize = 0;
+		// const uploadFolder = join(path, process.env.UPLOADS_BASE_PATH, email);
+		// let currentTotalFolderSize = 0;
 
-		try {
-			const existingFileNames = await fsPromises.readdir(uploadFolder);
-			for (const fileName of existingFileNames) {
-				const filePath = join(uploadFolder, fileName);
-				const stat = await fsPromises.stat(filePath);
-				currentTotalFolderSize += stat.size;
-			}
-		} catch (error) {
-			throw new InternalServerErrorException(
-				'We cannot retrieve storage size information.',
-			);
-		}
+		// try {
+		// 	const existingFileNames = await fsPromises.readdir(uploadFolder);
+		// 	for (const fileName of existingFileNames) {
+		// 		const filePath = join(uploadFolder, fileName);
+		// 		const stat = await fsPromises.stat(filePath);
+		// 		currentTotalFolderSize += stat.size;
+		// 	}
+		// } catch (error) {
+		// 	throw new InternalServerErrorException(
+		// 		'We cannot retrieve storage size information.',
+		// 	);
+		// }
 
 		return {
 			id,
@@ -172,8 +178,9 @@ export class AuthService {
 			subscription,
 			stripeCustomerId,
 			role,
-			maxFolderSize: maxFolderSizeBytes,
-			currentTotalFolderSize,
+			referralCode,
+			// maxFolderSize: maxFolderSizeBytes,
+			// currentTotalFolderSize,
 		};
 	}
 

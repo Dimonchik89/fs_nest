@@ -2,6 +2,7 @@ import { Sequelize } from 'sequelize-typescript';
 import { User } from '../entities/user.entity';
 import { File } from '../entities/file.entity';
 import { Post } from '../entities/post.entity';
+import { Referrals } from '../entities/referrals.entity';
 
 // ----------------------------------------- DEV MODE
 export const databaseProviders = [
@@ -23,7 +24,7 @@ export const databaseProviders = [
 				// },
 				logging: false,
 			});
-			sequelize.addModels([User, File, Post]);
+			sequelize.addModels([User, File, Post, Referrals]);
 			// sequelize.addModels([__dirname + '../**/*.entity{.ts,.js}']); work with typeorm
 			await sequelize.sync();
 			return sequelize;

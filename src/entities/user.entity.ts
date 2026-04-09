@@ -4,6 +4,7 @@ import {
 	DataType,
 	Default,
 	HasMany,
+	HasOne,
 	Model,
 	PrimaryKey,
 	Table,
@@ -12,6 +13,7 @@ import { File } from './file.entity';
 import { Role } from '../auth/enums/role.enum';
 import { DataTypes } from 'sequelize';
 import { SubscriptionEnum } from 'src/stripe/stripe.types';
+import { Referrals } from './referrals.entity';
 
 @Table
 export class User extends Model {
@@ -59,7 +61,19 @@ export class User extends Model {
 	@Column
 	subscriptionId: string;
 
+	@Column
+	referralCode: string;
+
+	@Column
+	referredById: string | null;
+
 	// @HasMany(() => File, { onDelete: 'CASCADE' })
 	@HasMany(() => File)
 	userFiles: File[];
+
+	@HasMany(() => Referrals, 'referrerId')
+	referralsSent: Referrals[];
+
+	@HasMany(() => Referrals, 'refereeId')
+	referralReceived: Referrals;
 }

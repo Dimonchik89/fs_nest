@@ -14,6 +14,7 @@ import googleOathConfig from './config/google-oath.config';
 import { GoogleStrategy } from './strategies/google.strategy';
 import clientConfig from './config/client.config';
 import { StripeModule } from '../stripe/stripe.module';
+import { referralsProviders } from '../referrals/referrals.providers';
 
 @Module({
 	controllers: [AuthController],
@@ -43,6 +44,7 @@ import { StripeModule } from '../stripe/stripe.module';
 		// 	useClass: RolesGuard
 		// },
 		...userProviders,
+		...referralsProviders,
 	],
 	exports: [AuthService],
 })

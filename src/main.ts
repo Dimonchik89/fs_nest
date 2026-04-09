@@ -4,7 +4,6 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { json } from 'express';
 import * as bodyParser from 'body-parser';
 
-
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule, { rawBody: true });
 	// app.enableCors({
@@ -55,5 +54,7 @@ async function bootstrap() {
 	await app.listen(process.env.PORT ?? 3001);
 }
 bootstrap();
+
+// stripe login - если ошибка перелогинится
 
 // stripe listen --forward-to localhost:3001/api/stripe/webhook

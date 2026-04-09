@@ -5,7 +5,9 @@ import {
 	Get,
 	HttpCode,
 	Inject,
+	Param,
 	Post,
+	Query,
 	Req,
 	Res,
 	UseGuards,
@@ -79,6 +81,7 @@ export class AuthController {
 		if (oldUser) {
 			throw new BadRequestException(ALREADY_REGISTERED_ERROR);
 		}
+
 		const user = await this.authService.createUser(dto);
 
 		const { accessToken, refreshToken } =
@@ -116,7 +119,7 @@ export class AuthController {
 	@Post('login')
 	async login(@Body() dto: AuthDto) {
 		const user = await this.authService.validateUser(dto);
-		console.log(join(__dirname, '..', '..', 'uploads'));
+		// console.log(join(__dirname, '..', '..', 'uploads'));
 
 		return await this.authService.login(user);
 	}
@@ -201,7 +204,6 @@ export class AuthController {
 	@Get('google/callback')
 	async googleCallback(@Req() req, @Res() res) {
 		const response = await this.authService.login(req.user);
-		console.log('google/callback', response);
 
 		res.redirect(
 			`${this.clientConfiguration.clientURL}/login?access_token=${response.access_token}&refresh_token=${response.refresh_token}`,
